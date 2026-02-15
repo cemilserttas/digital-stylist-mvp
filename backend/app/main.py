@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 import os
 
 from app.database import init_db
-from app.routers import wardrobe, users
+from app.routers import wardrobe, users, admin
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -48,6 +48,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # Include Routers
 app.include_router(wardrobe.router)
 app.include_router(users.router)
+app.include_router(admin.router)
 
 @app.get("/")
 def read_root():
