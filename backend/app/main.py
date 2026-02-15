@@ -22,11 +22,18 @@ origins = [
     "http://127.0.0.1:3000",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "https://digital-stylist-mvp.vercel.app",
+    "https://digital-stylist-mvp.onrender.com",
 ]
+
+# Also allow any Vercel preview URLs
+import re
+origin_regex = r"https://digital-stylist-mvp.*\.vercel\.app"
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
