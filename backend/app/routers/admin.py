@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+from dotenv import load_dotenv
 import os
+
+load_dotenv()
 
 from app.database import get_session
 from app.models import User, UserRead, ClothingItem

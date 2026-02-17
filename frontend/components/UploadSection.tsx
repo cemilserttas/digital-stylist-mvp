@@ -1,16 +1,19 @@
 import { useState, useRef } from 'react';
-import { Upload, Shirt, Loader2 } from 'lucide-react';
+import { Upload, Shirt, Loader2, Sparkles } from 'lucide-react';
 import { api } from '../lib/api';
 
 interface UploadSectionProps {
     userId: number;
+    category: string;
     onUploadComplete: () => void;
 }
 
-export default function UploadSection({ userId, onUploadComplete }: UploadSectionProps) {
+export default function UploadSection({ userId, category, onUploadComplete }: UploadSectionProps) {
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const isWishlist = category === 'wishlist';
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -22,6 +25,7 @@ export default function UploadSection({ userId, onUploadComplete }: UploadSectio
         const formData = new FormData();
         formData.append('file', file);
         formData.append('user_id', userId.toString());
+        formData.append('category', category);
 
         try {
             await api.post('/wardrobe/upload', formData, {
@@ -30,36 +34,53 @@ export default function UploadSection({ userId, onUploadComplete }: UploadSectio
                 },
             });
             onUploadComplete();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
             setError("Erreur lors de l'upload. L'IA n'a peut-être pas pu analyser l'image.");
         } finally {
             setUploading(false);
             if (fileInputRef.current) {
-                fileInputRef.current.value = ''; // Reset input
+                fileInputRef.current.value = '';
             }
         }
     };
 
     return (
-        <div className="w-full bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6 transition-all hover:shadow-md">
+        <div className={`w-full p-6 rounded-2xl shadow-sm border flex flex-col md:flex-row items-center justify-between gap-6 transition-all hover:shadow-md ${isWishlist
+                ? 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-100'
+                : 'bg-white border-gray-100'
+            }`}>
             <div className="flex items-center gap-4">
-                <div className="bg-black/5 p-3 rounded-xl">
-                    <Shirt className="w-8 h-8 text-black" />
+                <div className={`p-3 rounded-xl ${isWishlist ? 'bg-purple-100' : 'bg-black/5'}`}>
+                    {isWishlist
+                        ? <Sparkles className="w-8 h-8 text-purple-600" />
+                        : <Shirt className="w-8 h-8 text-black" />
+                    }
                 </div>
                 <div>
-                    <h3 className="text-lg font-bold text-gray-900">Ajouter un vêtement</h3>
-                    <p className="text-sm text-gray-500">Prenez une photo, l'IA s'occupe du reste.</p>
+                    <h3 className="text-lg font-bold text-gray-900">
+                        {isWishlist ? 'Ajouter une inspiration' : 'Ajouter un vêtement'}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                        {isWishlist
+                            ? 'Uploadez un look qui vous plaît, on trouve les pièces pour vous.'
+                            : 'Prenez une photo, l\'IA s\'occupe du reste.'
+                        }
+                    </p>
                 </div>
             </div>
 
             <div className="flex flex-col items-end gap-2 w-full md:w-auto">
                 <label
-                    htmlFor="clothing-upload"
+                    htmlFor={`upload-${category}`}
                     className={`
-            cursor-pointer flex items-center gap-2 bg-black text-white px-6 py-3 rounded-full font-medium shadow-lg hover:shadow-xl hover:bg-gray-900 transition-all transform active:scale-95
-            ${uploading ? 'opacity-75 cursor-not-allowed' : ''}
-          `}
+                        cursor-pointer flex items-center gap-2 px-6 py-3 rounded-full font-medium shadow-lg hover:shadow-xl transition-all transform active:scale-95
+                        ${uploading ? 'opacity-75 cursor-not-allowed' : ''}
+                        ${isWishlist
+                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700'
+                            : 'bg-black text-white hover:bg-gray-900'
+                        }
+                    `}
                 >
                     {uploading ? (
                         <>
@@ -69,11 +90,11 @@ export default function UploadSection({ userId, onUploadComplete }: UploadSectio
                     ) : (
                         <>
                             <Upload className="w-5 h-5" />
-                            <span>Charger une photo</span>
+                            <span>{isWishlist ? 'Charger un look' : 'Charger une photo'}</span>
                         </>
                     )}
                     <input
-                        id="clothing-upload"
+                        id={`upload-${category}`}
                         type="file"
                         accept="image/*"
                         className="hidden"

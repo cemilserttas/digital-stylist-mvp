@@ -1,8 +1,8 @@
 import shutil
 import uuid
 import os
-from typing import List
-from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, status
+from typing import List, Optional
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -19,6 +19,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 async def upload_clothing_item(
     file: UploadFile = File(...),
     user_id: int = Form(...),
+    category: str = Form("wardrobe"),
     session: AsyncSession = Depends(get_session)
 ):
     # Verify user exists
@@ -26,10 +27,14 @@ async def upload_clothing_item(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # Validate category
+    if category not in ("wardrobe", "wishlist"):
+        category = "wardrobe"
+
     # Generate unique filename
     file_extension = os.path.splitext(file.filename)[1]
     if not file_extension:
-        file_extension = ".jpg" # Default to jpg if no extension
+        file_extension = ".jpg"
         
     unique_filename = f"{uuid.uuid4()}{file_extension}"
     file_location = os.path.join(UPLOAD_DIR, unique_filename)
@@ -42,21 +47,19 @@ async def upload_clothing_item(
         raise HTTPException(status_code=500, detail=f"Could not save file: {str(e)}")
 
     # Analyze with AI
-    # Reset file pointer for reading
     await file.seek(0)
     content = await file.read()
     
-    # Call AI service
     analysis = await ai_service.analyze_clothing_image(content, mime_type=file.content_type or "image/jpeg")
 
     # Create DB Entry
-    # ai_service.analyze_clothing_image already normalises all keys
     new_item = ClothingItem(
         user_id=user_id,
         type=analysis.get("type", "Vêtement"),
         couleur=analysis.get("couleur_dominante", "Multicolore"),
         saison=analysis.get("saison", "Toutes"),
-        tags_ia=analysis.get("tags_ia", "Style: Casual, Coupe: Regular"),
+        tags_ia=analysis.get("tags_ia", ""),
+        category=category,
         image_path=file_location.replace("\\", "/")
     )
     
@@ -69,9 +72,12 @@ async def upload_clothing_item(
 @router.get("/{user_id}", response_model=List[ClothingItemRead])
 async def get_user_wardrobe(
     user_id: int,
+    category: Optional[str] = Query(None),
     session: AsyncSession = Depends(get_session)
 ):
     statement = select(ClothingItem).where(ClothingItem.user_id == user_id)
+    if category:
+        statement = statement.where(ClothingItem.category == category)
     result = await session.execute(statement)
     items = result.scalars().all()
     return items
@@ -85,7 +91,6 @@ async def delete_clothing_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     
-    # Delete image file from disk
     if item.image_path and os.path.exists(item.image_path):
         try:
             os.remove(item.image_path)
