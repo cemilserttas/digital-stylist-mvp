@@ -13,6 +13,19 @@ from app.services.ai_service import get_daily_suggestions, chat_with_stylist
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # TEMPORARY: Clean up old data on startup (as requested)
+    if os.path.exists("stylist.db"):
+        os.remove("stylist.db")
+        print("🗑️ Old database deleted.")
+    
+    upload_dir = "uploads"
+    if os.path.exists(upload_dir):
+        for file in os.listdir(upload_dir):
+            file_path = os.path.join(upload_dir, file)
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+        print("🗑️ Uploads folder cleared.")
+
     await init_db()
     yield
 
