@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, ExternalLink, Loader2, Sparkles } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { MessageCircle, X, Send, ExternalLink, Loader2, Sparkles, ShoppingBag } from 'lucide-react';
 import { chatWithStylist, saveClick } from '@/lib/api';
 
 interface ChatProduct {
@@ -37,6 +39,7 @@ export default function ChatBot({ userId, userName }: ChatBotProps) {
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [hasNewMessage, setHasNewMessage] = useState(false);
+    const { playPop, playSuccessChime } = useSoundEffects();
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
@@ -51,6 +54,7 @@ export default function ChatBot({ userId, userName }: ChatBotProps) {
     }, [isOpen]);
 
     const handleProductClick = (product: ChatProduct) => {
+        playSuccessChime();
         const url = buildShopUrl(product.recherche);
         saveClick(userId, {
             product_name: product.name,
@@ -130,8 +134,8 @@ export default function ChatBot({ userId, userName }: ChatBotProps) {
                                 <div className={`max-w-[85%] ${msg.role === 'user' ? 'order-1' : ''}`}>
                                     <div
                                         className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
-                                                ? 'bg-purple-600 text-white rounded-br-md'
-                                                : 'bg-white/5 text-gray-200 rounded-bl-md border border-white/5'
+                                            ? 'bg-purple-600 text-white rounded-br-md'
+                                            : 'bg-white/5 text-gray-200 rounded-bl-md border border-white/5'
                                             }`}
                                     >
                                         {msg.content}
@@ -139,25 +143,37 @@ export default function ChatBot({ userId, userName }: ChatBotProps) {
 
                                     {/* Product cards */}
                                     {msg.products && msg.products.length > 0 && (
-                                        <div className="mt-2 space-y-1.5">
+                                        <div className="mt-3 space-y-2">
                                             {msg.products.map((product, pidx) => {
                                                 const prix = typeof product.prix === 'number' ? product.prix : parseFloat(String(product.prix)) || 0;
                                                 return (
-                                                    <a
+                                                    <motion.a
+                                                        whileHover={{ scale: 1.02 }}
+                                                        whileTap={{ scale: 0.98 }}
                                                         key={pidx}
                                                         href={buildShopUrl(product.recherche)}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         onClick={() => handleProductClick(product)}
-                                                        className="flex items-center gap-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl px-3 py-2.5 transition-colors group"
+                                                        className="flex flex-col gap-2 bg-gradient-to-br from-white/5 to-white/10 hover:from-white/10 hover:to-white/20 border border-white/10 rounded-xl p-3 transition-colors group shadow-lg"
                                                     >
-                                                        <div className="flex-1 min-w-0">
-                                                            <p className="text-xs font-medium text-white truncate">{product.name}</p>
-                                                            <p className="text-[10px] text-gray-500">{product.marque}</p>
+                                                        <div className="flex justify-between items-start gap-2">
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-bold text-white leading-tight">{product.name}</p>
+                                                                <p className="text-[10px] text-purple-300 font-medium tracking-wide uppercase mt-0.5">{product.marque}</p>
+                                                            </div>
+                                                            <span className="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 flex-shrink-0">
+                                                                {prix.toFixed(2)}€
+                                                            </span>
                                                         </div>
-                                                        <span className="text-xs font-bold text-purple-400 flex-shrink-0">{prix.toFixed(2)}€</span>
-                                                        <ExternalLink className="w-3 h-3 text-gray-600 group-hover:text-white flex-shrink-0 transition-colors" />
-                                                    </a>
+                                                        <div className="flex items-center justify-between mt-1">
+                                                            <span className="text-[10px] text-gray-400">Voir l'article</span>
+                                                            <div className="flex items-center gap-1.5 bg-white/10 rounded-full px-2.5 py-1 group-hover:bg-purple-500/20 transition-colors">
+                                                                <ShoppingBag className="w-3 h-3 text-purple-300" />
+                                                                <span className="text-[10px] font-bold text-purple-300 uppercase">Acheter</span>
+                                                            </div>
+                                                        </div>
+                                                    </motion.a>
                                                 );
                                             })}
                                         </div>
@@ -217,10 +233,10 @@ export default function ChatBot({ userId, userName }: ChatBotProps) {
 
             {/* Floating Button */}
             <button
-                onClick={() => { setIsOpen(!isOpen); setHasNewMessage(false); }}
-                className={`fixed bottom-6 right-4 sm:right-6 z-50 w-14 h-14 rounded-full shadow-lg shadow-purple-500/30 flex items-center justify-center transition-all duration-300 ${isOpen
-                        ? 'bg-gray-800 rotate-0 scale-90'
-                        : 'bg-gradient-to-br from-purple-600 to-blue-600 hover:scale-110'
+                onClick={() => { playPop(); setIsOpen(!isOpen); setHasNewMessage(false); }}
+                className={`fixed bottom-24 right-4 sm:right-6 z-50 w-14 h-14 rounded-full shadow-[0_0_30px_rgba(147,51,234,0.3)] flex items-center justify-center transition-all duration-300 ${isOpen
+                    ? 'bg-gray-800 rotate-0 scale-90'
+                    : 'bg-gradient-to-br from-purple-500 hover:from-purple-400 to-pink-500 hover:to-pink-400 hover:scale-105 hover:shadow-[0_0_40px_rgba(147,51,234,0.5)]'
                     }`}
             >
                 {isOpen ? (

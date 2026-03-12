@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { Trash2, Pencil, X, Check, Eye } from 'lucide-react';
 import { getImageUrl, deleteClothing, updateClothing } from '../lib/api';
 import ClothingDetail from './ClothingDetail';
@@ -28,13 +29,16 @@ export default function WardrobeGallery({ items, loading, onItemChanged }: Wardr
     const [deletingId, setDeletingId] = useState<number | null>(null);
     const [saving, setSaving] = useState(false);
     const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
+    const { playPop } = useSoundEffects();
 
     const handleStartEdit = (item: ClothingItem) => {
+        playPop();
         setEditingId(item.id);
         setEditForm({ type: item.type, couleur: item.couleur, saison: item.saison });
     };
 
     const handleCancelEdit = () => {
+        playPop();
         setEditingId(null);
         setEditForm({ type: '', couleur: '', saison: '' });
     };
@@ -53,6 +57,7 @@ export default function WardrobeGallery({ items, loading, onItemChanged }: Wardr
     };
 
     const handleDelete = async (itemId: number) => {
+        playPop();
         if (!confirm('Supprimer ce vêtement ?')) return;
         setDeletingId(itemId);
         try {
@@ -193,7 +198,7 @@ export default function WardrobeGallery({ items, loading, onItemChanged }: Wardr
                                         {/* ACTION BUTTONS - always visible */}
                                         <div className="flex gap-2 pt-2 border-t border-gray-100">
                                             <button
-                                                onClick={() => setSelectedItem(item)}
+                                                onClick={() => { playPop(); setSelectedItem(item); }}
                                                 className="flex-1 flex items-center justify-center gap-1.5 bg-gray-900 text-white text-xs font-medium py-2 rounded-lg hover:bg-black transition-colors"
                                             >
                                                 <Eye className="w-3 h-3" />

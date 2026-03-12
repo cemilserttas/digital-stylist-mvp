@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { LogIn, UserPlus, Loader2, Sparkles } from 'lucide-react';
 import { api } from '../lib/api';
 
@@ -27,6 +28,7 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
     const [morphologie, setMorphologie] = useState(MORPHOLOGIES[2].value);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { playPop, playSuccessChime } = useSoundEffects();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -37,6 +39,7 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
         try {
             if (mode === 'login') {
                 const response = await api.post('/users/login', { prenom: prenom.trim() });
+                playSuccessChime();
                 onUserCreated(response.data);
             } else {
                 const response = await api.post('/users/create', {
@@ -45,6 +48,7 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                     genre,
                     age,
                 });
+                playSuccessChime();
                 onUserCreated(response.data);
             }
         } catch (err: unknown) {
@@ -63,6 +67,7 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
 
     const nextStep = () => {
         if (step === 1 && !prenom.trim()) return;
+        playPop();
         setStep(s => Math.min(s + 1, 3));
     };
 
@@ -91,10 +96,10 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                     <div className="flex bg-white/5 rounded-2xl p-1 mb-8">
                         <button
                             type="button"
-                            onClick={() => { setMode('login'); setError(null); setStep(1); }}
+                            onClick={() => { playPop(); setMode('login'); setError(null); setStep(1); }}
                             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${mode === 'login'
-                                    ? 'bg-white text-gray-900 shadow-lg'
-                                    : 'text-gray-400 hover:text-white'
+                                ? 'bg-white text-gray-900 shadow-lg'
+                                : 'text-gray-400 hover:text-white'
                                 }`}
                         >
                             <LogIn className="w-4 h-4" />
@@ -102,10 +107,10 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                         </button>
                         <button
                             type="button"
-                            onClick={() => { setMode('register'); setError(null); setStep(1); }}
+                            onClick={() => { playPop(); setMode('register'); setError(null); setStep(1); }}
                             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${mode === 'register'
-                                    ? 'bg-white text-gray-900 shadow-lg'
-                                    : 'text-gray-400 hover:text-white'
+                                ? 'bg-white text-gray-900 shadow-lg'
+                                : 'text-gray-400 hover:text-white'
                                 }`}
                         >
                             <UserPlus className="w-4 h-4" />
@@ -190,10 +195,10 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                                                 <button
                                                     key={g}
                                                     type="button"
-                                                    onClick={() => setGenre(g)}
+                                                    onClick={() => { playPop(); setGenre(g); }}
                                                     className={`py-3.5 rounded-xl font-bold text-sm transition-all ${genre === g
-                                                            ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20'
-                                                            : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
+                                                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20'
+                                                        : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'
                                                         }`}
                                                 >
                                                     {g === 'Homme' ? '👨' : '👩'} {g}
@@ -263,8 +268,8 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                                                     type="button"
                                                     onClick={() => setMorphologie(m.value)}
                                                     className={`w-full text-left px-4 py-3 rounded-xl transition-all flex items-center justify-between ${morphologie === m.value
-                                                            ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20'
-                                                            : 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10'
+                                                        ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20'
+                                                        : 'bg-white/5 text-gray-300 border border-white/10 hover:bg-white/10'
                                                         }`}
                                                 >
                                                     <div>

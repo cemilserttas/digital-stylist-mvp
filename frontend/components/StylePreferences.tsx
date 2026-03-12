@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { Check, ArrowRight, Sparkles } from 'lucide-react';
 
 interface StylePreferencesProps {
@@ -80,8 +81,10 @@ export default function StylePreferences({ userName, initialPreferences, onCompl
     const currentCategory = STYLE_CATEGORIES[step];
     const currentKey = currentCategory.key;
     const currentSelections = selections[currentKey] || [];
+    const { playPop, playSuccessChime } = useSoundEffects();
 
     const toggleItem = (id: string) => {
+        playPop();
         setSelections((prev) => {
             const current = prev[currentKey] || [];
             return {
@@ -100,14 +103,19 @@ export default function StylePreferences({ userName, initialPreferences, onCompl
 
     const handleNext = () => {
         if (step < STYLE_CATEGORIES.length - 1) {
+            playPop();
             setStep(step + 1);
         } else {
+            playSuccessChime();
             onComplete(JSON.stringify(selections));
         }
     };
 
     const handleBack = () => {
-        if (step > 0) setStep(step - 1);
+        if (step > 0) {
+            playPop();
+            setStep(step - 1);
+        }
     };
 
     const isLast = step === STYLE_CATEGORIES.length - 1;
