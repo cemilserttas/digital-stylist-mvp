@@ -13,12 +13,14 @@ import ChatBot from '@/components/ChatBot';
 import StylePreferences from '@/components/StylePreferences';
 import SuggestionsSection from '@/components/SuggestionsSection';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import OutfitCalendar from '@/components/OutfitCalendar';
+import WardrobeStats from '@/components/WardrobeStats';
 import { getWardrobe, getDailySuggestions, saveClick, updateUser } from '@/lib/api';
 import type { User, ClothingItem, Suggestion, SuggestionPiece, TabType } from '@/lib/types';
 import { buildShopUrl } from '@/lib/utils';
 import {
   Shirt, Sparkles, Cloud, Sun, CloudRain, CloudSnow, CloudLightning,
-  CloudDrizzle, Wind, MapPin, Clock, Settings, Heart
+  CloudDrizzle, Wind, MapPin, Clock, Settings, Heart, CalendarDays
 } from 'lucide-react';
 
 function WeatherIcon({ code }: { code: string }) {
@@ -312,10 +314,25 @@ export default function Home() {
               </div>
             )}
 
+            {/* ===== CALENDAR TAB ===== */}
+            {activeTab === 'calendar' && (
+              <ErrorBoundary label="Planning">
+                <div className="pt-6">
+                  <OutfitCalendar userId={user.id} wardrobeItems={wardrobeItems} />
+                </div>
+              </ErrorBoundary>
+            )}
+
             {/* ===== WARDROBE / WISHLIST TABS ===== */}
             {(activeTab === 'wardrobe' || activeTab === 'wishlist') && (
               <ErrorBoundary label="Garde-robe">
               <div className="space-y-8">
+                {activeTab === 'wardrobe' && (
+                  <ErrorBoundary label="Statistiques">
+                    <WardrobeStats userId={user.id} itemCount={wardrobeItems.length} />
+                  </ErrorBoundary>
+                )}
+
                 <UploadSection
                   userId={user.id}
                   category={activeTab}
@@ -378,6 +395,7 @@ export default function Home() {
           {([
             { key: 'home' as TabType, icon: Sparkles, label: 'Accueil' },
             { key: 'wardrobe' as TabType, icon: Shirt, label: 'Dressing', count: wardrobeItems.length },
+            { key: 'calendar' as TabType, icon: CalendarDays, label: 'Planning' },
             { key: 'wishlist' as TabType, icon: Heart, label: 'Wishlist', count: wishlistItems.length },
           ]).map(({ key, icon: Icon, label, count }) => {
             const isActive = activeTab === key;

@@ -33,6 +33,7 @@ class User(UserBase, table=True):
     password_hash: Optional[str] = Field(default=None, exclude=True)
     clothing_items: List["ClothingItem"] = Relationship(back_populates="user")
     link_clicks: List["LinkClick"] = Relationship(back_populates="user")
+    outfit_plans: List["OutfitPlan"] = Relationship(back_populates="user")
 
 class UserCreate(UserBase):
     password: str
@@ -82,4 +83,30 @@ class LinkClickCreate(SQLModel):
     url: str
 
 class LinkClickRead(LinkClickBase):
+    id: int
+
+
+# Outfit Planning Calendar
+class OutfitPlanBase(SQLModel):
+    date: str  # ISO date YYYY-MM-DD
+    occasion: Optional[str] = None
+    notes: Optional[str] = None
+    item_ids: str = Field(default="[]")  # JSON array of ClothingItem ids
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    user_id: int = Field(foreign_key="user.id")
+
+
+class OutfitPlan(OutfitPlanBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user: Optional["User"] = Relationship(back_populates="outfit_plans")
+
+
+class OutfitPlanCreate(SQLModel):
+    date: str
+    item_ids: list[int] = []
+    occasion: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class OutfitPlanRead(OutfitPlanBase):
     id: int

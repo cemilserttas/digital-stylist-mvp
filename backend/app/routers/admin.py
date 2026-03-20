@@ -2,13 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, func
 from dotenv import load_dotenv
+from datetime import datetime, timedelta
 import logging
 import os
 
 load_dotenv()
 
 from app.database import get_session
-from app.models import User, ClothingItem
+from app.models import User, ClothingItem, LinkClick
 
 logger = logging.getLogger(__name__)
 
@@ -97,16 +98,78 @@ async def delete_user_cascade(
 @router.get("/stats")
 async def get_stats(
     admin: bool = Depends(verify_admin),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_session),
 ):
-    """Get overall platform statistics."""
-    users_result = await session.execute(select(User))
-    users = users_result.scalars().all()
-    
-    items_result = await session.execute(select(ClothingItem))
-    items = items_result.scalars().all()
-    
+    """Get comprehensive platform analytics."""
+    now = datetime.utcnow()
+    thirty_days_ago = now - timedelta(days=30)
+    seven_days_ago = now - timedelta(days=7)
+
+    # Aggregated counts
+    total_users = (await session.execute(select(func.count(User.id)))).scalar_one()
+    total_items = (await session.execute(select(func.count(ClothingItem.id)))).scalar_one()
+    total_clicks = (await session.execute(select(func.count(LinkClick.id)))).scalar_one()
+
+    # New users last 7 / 30 days
+    new_users_7d = (await session.execute(
+        select(func.count(User.id)).where(User.created_at >= seven_days_ago)
+    )).scalar_one()
+    new_users_30d = (await session.execute(
+        select(func.count(User.id)).where(User.created_at >= thirty_days_ago)
+    )).scalar_one()
+
+    # Items per category
+    wardrobe_count = (await session.execute(
+        select(func.count(ClothingItem.id)).where(ClothingItem.category == "wardrobe")
+    )).scalar_one()
+    wishlist_count = (await session.execute(
+        select(func.count(ClothingItem.id)).where(ClothingItem.category == "wishlist")
+    )).scalar_one()
+
+    # Top clicked brands
+    brand_clicks_result = await session.execute(
+        select(LinkClick.marque, func.count(LinkClick.id).label("count"))
+        .group_by(LinkClick.marque)
+        .order_by(func.count(LinkClick.id).desc())
+        .limit(5)
+    )
+    top_brands = [
+        {"marque": row.marque, "clicks": row.count}
+        for row in brand_clicks_result.all()
+    ]
+
+    # Revenue estimate (5% commission avg €30 cart)
+    estimated_revenue_eur = round(total_clicks * 30 * 0.05, 2)
+
+    # Daily signups last 14 days
+    signups_by_day = []
+    for i in range(13, -1, -1):
+        day = (now - timedelta(days=i)).date()
+        day_start = datetime.combine(day, datetime.min.time())
+        day_end = day_start + timedelta(days=1)
+        count = (await session.execute(
+            select(func.count(User.id))
+            .where(User.created_at >= day_start)
+            .where(User.created_at < day_end)
+        )).scalar_one()
+        signups_by_day.append({"date": day.isoformat(), "count": count})
+
     return {
-        "total_users": len(users),
-        "total_items": len(items),
+        "users": {
+            "total": total_users,
+            "new_7d": new_users_7d,
+            "new_30d": new_users_30d,
+            "signups_by_day": signups_by_day,
+        },
+        "wardrobe": {
+            "total_items": total_items,
+            "wardrobe": wardrobe_count,
+            "wishlist": wishlist_count,
+            "avg_per_user": round(total_items / total_users, 1) if total_users else 0,
+        },
+        "monetization": {
+            "total_clicks": total_clicks,
+            "top_brands": top_brands,
+            "estimated_revenue_eur": estimated_revenue_eur,
+        },
     }

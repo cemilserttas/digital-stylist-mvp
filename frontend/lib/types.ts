@@ -43,4 +43,12 @@ export interface WeatherData {
   wind_speed?: number;
 }
 
-export type TabType = 'home' | 'wardrobe' | 'wishlist';
+export type TabType = 'home' | 'wardrobe' | 'wishlist' | 'calendar';
+
+export interface OutfitPlan {
+  id: number;
+  date: string; // YYYY-MM-DD
+  occasion?: string | null;
+  notes?: string | null;
+  item_ids: number[];
+}

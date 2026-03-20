@@ -125,6 +125,34 @@ export const chatWithStylist = async (userId: number, message: string, history: 
     return response.data;
 };
 
+export const getOutfitPlans = async (userId: number, start?: string, end?: string) => {
+    const params = new URLSearchParams();
+    if (start) params.append('start', start);
+    if (end) params.append('end', end);
+    const response = await api.get(`/outfit-calendar/${userId}?${params.toString()}`);
+    return response.data;
+};
+
+export const saveOutfitPlan = async (userId: number, plan: {
+    date: string;
+    item_ids: number[];
+    occasion?: string;
+    notes?: string;
+}) => {
+    const response = await api.post(`/outfit-calendar/${userId}`, plan);
+    return response.data;
+};
+
+export const deleteOutfitPlan = async (planId: number) => {
+    const response = await api.delete(`/outfit-calendar/${planId}`);
+    return response.data;
+};
+
+export const getWardrobeAnalytics = async (userId: number) => {
+    const response = await api.get(`/wardrobe/${userId}/analytics`);
+    return response.data;
+};
+
 export const getImageUrl = (path: string) => {
     const normalizedPath = path.replace(/\\/g, '/');
     return `${API_URL}/${normalizedPath}`;

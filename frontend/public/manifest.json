@@ -1,0 +1,45 @@
+{
+  "name": "Digital Stylist — Votre styliste IA personnel",
+  "short_name": "DigitalStylist",
+  "description": "Analysez vos vêtements, recevez des suggestions personnalisées et construisez votre style idéal avec l'IA.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#a855f7",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "fr",
+  "categories": ["lifestyle", "shopping", "fashion"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Suggestions personnalisées"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ma garde-robe",
+      "short_name": "Dressing",
+      "description": "Accéder à ma garde-robe",
+      "url": "/?tab=wardrobe",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

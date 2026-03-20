@@ -3,16 +3,21 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
-from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, field_validator
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 import logging
 import os
 
-from app.database import init_db, get_session
+from app.database import init_db
 from app.models import User
-from app.routers import wardrobe, users, admin
+from app.routers import wardrobe, users, admin, outfit_calendar
 from app.services.ai_service import get_daily_suggestions, chat_with_stylist
 from app.auth import get_current_user
+
+limiter = Limiter(key_func=get_remote_address)
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
@@ -59,6 +64,9 @@ async def lifespan(_app: FastAPI):
     yield
 
 app = FastAPI(title="Digital Stylist API", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 
 # ---------------------------------------------------------------------------
@@ -104,13 +112,16 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.include_router(wardrobe.router)
 app.include_router(users.router)
 app.include_router(admin.router)
+app.include_router(outfit_calendar.router)
 
 @app.get("/")
 def read_root():
     return {"message": "Welcome to Digital Stylist API"}
 
 @app.post("/suggestions/{user_id}")
+@limiter.limit("10/hour")
 async def daily_suggestions(
+    request: Request,
     user_id: int,
     weather_data: WeatherRequest,
     current_user: User = Depends(get_current_user),
@@ -129,7 +140,9 @@ async def daily_suggestions(
 
 
 @app.post("/chat/{user_id}")
+@limiter.limit("30/hour")
 async def chat_endpoint(
+    request: Request,  # required by slowapi
     user_id: int,
     body: ChatRequest,
     current_user: User = Depends(get_current_user),
