@@ -4,13 +4,19 @@ import { useCallback } from 'react';
 
 const SUCCESS_CHORDS = [523.25, 659.25, 1046.50];
 
+type WebkitWindow = Window & { webkitAudioContext?: typeof AudioContext };
+
+function getAudioContext(): typeof AudioContext | undefined {
+    return window.AudioContext || (window as WebkitWindow).webkitAudioContext;
+}
+
 export function useSoundEffects() {
     const playPop = useCallback(() => {
         try {
-            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-            if (!AudioContext) return;
+            const AC = getAudioContext();
+            if (!AC) return;
 
-            const ctx = new AudioContext();
+            const ctx = new AC();
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
 
@@ -26,17 +32,17 @@ export function useSoundEffects() {
 
             osc.start(ctx.currentTime);
             osc.stop(ctx.currentTime + 0.1);
-        } catch (e) {
-            console.log('Audio error:', e);
+        } catch (err) {
+            console.error('Audio error:', err);
         }
     }, []);
 
     const playSuccessChime = useCallback(() => {
         try {
-            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-            if (!AudioContext) return;
+            const AC = getAudioContext();
+            if (!AC) return;
 
-            const ctx = new AudioContext();
+            const ctx = new AC();
 
             SUCCESS_CHORDS.forEach((freq, idx) => {
                 const osc = ctx.createOscillator();
@@ -59,16 +65,16 @@ export function useSoundEffects() {
                 osc.start(startTime);
                 osc.stop(startTime + duration);
             });
-        } catch (e) {
-            console.log('Audio error:', e);
+        } catch (err) {
+            console.error('Audio error:', err);
         }
     }, []);
 
     const playSwipe = useCallback(() => {
         try {
-            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-            if (!AudioContext) return;
-            const ctx = new AudioContext();
+            const AC = getAudioContext();
+            if (!AC) return;
+            const ctx = new AC();
             const bufferSize = ctx.sampleRate * 0.1;
             const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
             const output = buffer.getChannelData(0);
@@ -93,7 +99,7 @@ export function useSoundEffects() {
             gain.connect(ctx.destination);
 
             noiseSource.start();
-        } catch (e) { }
+        } catch { }
     }, []);
 
     return { playPop, playSuccessChime, playSwipe };

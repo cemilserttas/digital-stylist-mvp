@@ -23,6 +23,7 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
     const [mode, setMode] = useState<Mode>('login');
     const [step, setStep] = useState(1);
     const [prenom, setPrenom] = useState('');
+    const [password, setPassword] = useState('');
     const [genre, setGenre] = useState('Homme');
     const [age, setAge] = useState(25);
     const [morphologie, setMorphologie] = useState(MORPHOLOGIES[2].value);
@@ -38,18 +39,23 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
 
         try {
             if (mode === 'login') {
-                const response = await api.post('/users/login', { prenom: prenom.trim() });
+                const response = await api.post('/users/login', { prenom: prenom.trim(), password });
+                const { token, user } = response.data;
+                if (token) localStorage.setItem('stylist_token', token);
                 playSuccessChime();
-                onUserCreated(response.data);
+                onUserCreated(user ?? response.data);
             } else {
                 const response = await api.post('/users/create', {
                     prenom: prenom.trim(),
+                    password,
                     morphologie,
                     genre,
                     age,
                 });
+                const { token, user } = response.data;
+                if (token) localStorage.setItem('stylist_token', token);
                 playSuccessChime();
-                onUserCreated(response.data);
+                onUserCreated(user ?? response.data);
             }
         } catch (err: unknown) {
             const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
@@ -66,7 +72,7 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
     };
 
     const nextStep = () => {
-        if (step === 1 && !prenom.trim()) return;
+        if (step === 1 && (!prenom.trim() || password.length < 4)) return;
         playPop();
         setStep(s => Math.min(s + 1, 3));
     };
@@ -133,6 +139,17 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                                     autoFocus
                                 />
                             </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">Mot de passe</label>
+                                <input
+                                    type="password"
+                                    required
+                                    className="w-full px-4 py-3.5 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="Votre mot de passe"
+                                />
+                            </div>
 
                             {error && (
                                 <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 p-3 rounded-xl">
@@ -173,7 +190,7 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                                 ))}
                             </div>
 
-                            {/* Step 1: Name + Gender */}
+                            {/* Step 1: Name + Password + Gender */}
                             {step === 1 && (
                                 <div className="space-y-5" style={{ animation: 'fadeIn 0.3s ease-out' }}>
                                     <div>
@@ -186,6 +203,18 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                                             onChange={(e) => setPrenom(e.target.value)}
                                             placeholder="Votre prénom"
                                             autoFocus
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Mot de passe <span className="text-gray-500 font-normal">(min. 4 caractères)</span></label>
+                                        <input
+                                            type="password"
+                                            required
+                                            minLength={4}
+                                            className="w-full px-4 py-3.5 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            placeholder="Choisissez un mot de passe"
                                         />
                                     </div>
                                     <div>
@@ -209,7 +238,7 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                                     <button
                                         type="button"
                                         onClick={nextStep}
-                                        disabled={!prenom.trim()}
+                                        disabled={!prenom.trim() || password.length < 4}
                                         className="w-full bg-purple-600 text-white py-3.5 rounded-xl font-bold hover:bg-purple-700 transition-all disabled:opacity-50 active:scale-[0.98]"
                                     >
                                         Suivant →

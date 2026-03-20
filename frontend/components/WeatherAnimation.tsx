@@ -6,16 +6,22 @@ interface WeatherAnimationProps {
     weatherCode: string;
 }
 
+// Deterministic pseudo-random based on seed — pure, safe in useMemo
+function seededRand(seed: number): number {
+    const x = Math.sin(seed + 1) * 10000;
+    return x - Math.floor(x);
+}
+
 export default function WeatherAnimation({ weatherCode }: WeatherAnimationProps) {
     const particles = useMemo(() => {
         const count = weatherCode.includes('snow') ? 60 : weatherCode.includes('rain') || weatherCode.includes('shower') || weatherCode.includes('drizzle') ? 80 : 30;
         return Array.from({ length: count }, (_, i) => ({
             id: i,
-            left: Math.random() * 100,
-            delay: Math.random() * 5,
-            duration: 1 + Math.random() * 3,
-            size: 2 + Math.random() * 4,
-            opacity: 0.3 + Math.random() * 0.5,
+            left: seededRand(i) * 100,
+            delay: seededRand(i + 100) * 5,
+            duration: 1 + seededRand(i + 200) * 3,
+            size: 2 + seededRand(i + 300) * 4,
+            opacity: 0.3 + seededRand(i + 400) * 0.5,
         }));
     }, [weatherCode]);
 

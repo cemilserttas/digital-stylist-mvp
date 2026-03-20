@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
-import { MessageCircle, X, Send, ExternalLink, Loader2, Sparkles, ShoppingBag } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Sparkles, ShoppingBag } from 'lucide-react';
 import { chatWithStylist, saveClick } from '@/lib/api';
+import { buildShopUrl } from '@/lib/utils';
 
 interface ChatProduct {
     name: string;
@@ -22,10 +23,6 @@ interface ChatMessage {
 interface ChatBotProps {
     userId: number;
     userName: string;
-}
-
-function buildShopUrl(searchTerms: string): string {
-    return `https://www.google.com/search?btnI=1&q=${encodeURIComponent(searchTerms + ' acheter')}`;
 }
 
 export default function ChatBot({ userId, userName }: ChatBotProps) {
@@ -167,7 +164,7 @@ export default function ChatBot({ userId, userName }: ChatBotProps) {
                                                             </span>
                                                         </div>
                                                         <div className="flex items-center justify-between mt-1">
-                                                            <span className="text-[10px] text-gray-400">Voir l'article</span>
+                                                            <span className="text-[10px] text-gray-400">Voir l&apos;article</span>
                                                             <div className="flex items-center gap-1.5 bg-white/10 rounded-full px-2.5 py-1 group-hover:bg-purple-500/20 transition-colors">
                                                                 <ShoppingBag className="w-3 h-3 text-purple-300" />
                                                                 <span className="text-[10px] font-bold text-purple-300 uppercase">Acheter</span>

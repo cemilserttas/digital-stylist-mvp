@@ -1,9 +1,13 @@
 import os
 import json
 import re
+import logging
 import traceback
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Init
@@ -12,10 +16,11 @@ load_dotenv()
 
 api_key = os.getenv("GEMINI_API_KEY")
 if not api_key:
-    print("⚠️  WARNING: GEMINI_API_KEY not found in .env – AI features will fail.")
+    logger.warning("GEMINI_API_KEY not found – AI features will fail")
+    client = None
 else:
-    genai.configure(api_key=api_key)
-    print("✅ Gemini API configured successfully.")
+    client = genai.Client(api_key=api_key)
+    logger.info("Gemini API client created")
 
 # ---------------------------------------------------------------------------
 # Utility – extract JSON from text
@@ -23,7 +28,7 @@ else:
 def extract_json(text: str):
     """Extracts JSON (object or array) from text, handles markdown fences."""
     cleaned = text.strip()
-    
+
     # Remove markdown fences
     if cleaned.startswith("```json"):
         cleaned = cleaned[7:]
@@ -32,13 +37,13 @@ def extract_json(text: str):
     if cleaned.endswith("```"):
         cleaned = cleaned[:-3]
     cleaned = cleaned.strip()
-    
+
     # Try direct parse first
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError:
         pass
-    
+
     # Fallback: regex for object (our new format)
     obj_match = re.search(r'\{.*\}', text, re.DOTALL)
     if obj_match:
@@ -48,7 +53,7 @@ def extract_json(text: str):
                 return result
         except json.JSONDecodeError:
             pass
-    
+
     # Fallback: regex for array (old format compat)
     arr_match = re.search(r'\[.*\]', text, re.DOTALL)
     if arr_match:
@@ -58,7 +63,7 @@ def extract_json(text: str):
                 return result
         except json.JSONDecodeError:
             pass
-    
+
     return None
 
 # ---------------------------------------------------------------------------
@@ -185,38 +190,39 @@ async def analyze_clothing_image(image_bytes: bytes, mime_type: str = "image/jpe
         "evaluation": FALLBACK_EVALUATION,
     }, ensure_ascii=False)
     fallback_result = {**SINGLE_FALLBACK, "tags_ia": fallback_tags}
-    
-    try:
-        model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash",
-            generation_config={"temperature": 0.3, "max_output_tokens": 8192},
-        )
-    except Exception as e:
-        print(f"❌ Failed to create Gemini model: {e}")
-        traceback.print_exc()
+
+    if not client:
+        logger.error("Gemini client not initialized (missing API key)")
         return fallback_result
 
-    image_part = {"mime_type": mime_type, "data": image_bytes}
+    image_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
 
     try:
-        print("🔄 Sending image to Gemini 2.0 Flash for analysis...")
-        response = model.generate_content([ANALYZE_PROMPT, image_part])
+        logger.info("Sending image to Gemini for analysis")
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[ANALYZE_PROMPT, image_part],
+            config=types.GenerateContentConfig(
+                temperature=0.3,
+                max_output_tokens=8192,
+            ),
+        )
 
         # Check for blocked responses
         try:
             if response.prompt_feedback and response.prompt_feedback.block_reason:
-                print(f"❌ Gemini BLOCKED: {response.prompt_feedback}")
+                logger.warning("Gemini blocked response: %s", response.prompt_feedback)
                 return fallback_result
         except Exception:
             pass
 
         raw = response.text
-        print(f"🤖 RAW AI RESPONSE:\n{raw[:600]}")
+        logger.debug("Raw AI response (first 300 chars): %s", raw[:300])
 
         parsed = extract_json(raw)
 
         if parsed is None:
-            print(f"❌ Could not extract JSON. Full response:\n{raw}")
+            logger.error("Could not extract JSON from Gemini response")
             return fallback_result
 
         # Handle both response formats
@@ -235,11 +241,10 @@ async def analyze_clothing_image(image_bytes: bytes, mime_type: str = "image/jpe
             items_list = parsed
 
         if len(items_list) == 0:
-            print(f"❌ No items found. Full response:\n{raw}")
+            logger.error("No items found in Gemini response")
             return fallback_result
 
-        print(f"✅ Detected {len(items_list)} item(s): {[it.get('type', '?') for it in items_list]}")
-        print(f"⭐ Look score: {evaluation.get('note', '?')}/5")
+        logger.info("Detected %d item(s), look score: %s/5", len(items_list), evaluation.get('note', '?'))
 
         # Normalize each item
         for item in items_list:
@@ -260,7 +265,7 @@ async def analyze_clothing_image(image_bytes: bytes, mime_type: str = "image/jpe
         return primary
 
     except Exception as e:
-        print(f"❌ Exception during image analysis: {e}")
+        logger.error("Exception during image analysis: %s", e)
         traceback.print_exc()
         return fallback_result
 
@@ -270,13 +275,8 @@ async def analyze_clothing_image(image_bytes: bytes, mime_type: str = "image/jpe
 # ---------------------------------------------------------------------------
 async def get_daily_suggestions(user_profile: dict, weather_data: dict) -> dict:
     """Generate personalized style suggestions based on profile + weather."""
-    try:
-        model = genai.GenerativeModel(
-            "gemini-2.0-flash",
-            generation_config={"temperature": 0.7, "max_output_tokens": 4096},
-        )
-    except Exception as e:
-        print(f"❌ Failed to create model for suggestions: {e}")
+    if not client:
+        logger.error("Gemini client not initialized (missing API key)")
         return {"suggestions": []}
 
     prenom = user_profile.get("prenom", "Utilisateur")
@@ -378,14 +378,21 @@ REGLES STRICTES :
 """
 
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.7,
+                max_output_tokens=4096,
+            ),
+        )
         raw = response.text
         parsed = extract_json(raw)
         if isinstance(parsed, dict):
             return parsed
         return {"suggestions": [], "greeting": f"Bonjour {prenom} !"}
     except Exception as e:
-        print(f"❌ Exception during suggestions: {e}")
+        logger.error("Exception during suggestions: %s", e)
         return {"suggestions": [], "greeting": f"Bonjour {prenom} !"}
 
 
@@ -394,13 +401,8 @@ REGLES STRICTES :
 # ---------------------------------------------------------------------------
 async def chat_with_stylist(user_profile: dict, message: str, history: list[dict] = None) -> dict:
     """Chat with the AI stylist. Returns a text response + optional product links."""
-    try:
-        model = genai.GenerativeModel(
-            "gemini-2.0-flash",
-            generation_config={"temperature": 0.8, "max_output_tokens": 2048},
-        )
-    except Exception as e:
-        print(f"❌ Failed to create model for chat: {e}")
+    if not client:
+        logger.error("Gemini client not initialized (missing API key)")
         return {"reply": "Désolé, je suis indisponible pour le moment.", "products": []}
 
     prenom = user_profile.get("prenom", "Utilisateur")
@@ -457,12 +459,19 @@ REGLES :
 """
 
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.8,
+                max_output_tokens=2048,
+            ),
+        )
         raw = response.text
         parsed = extract_json(raw)
         if isinstance(parsed, dict):
             return parsed
         return {"reply": raw.strip(), "products": []}
     except Exception as e:
-        print(f"❌ Exception during chat: {e}")
-        return {"reply": "Désolé, j'ai eu un souci. Réessaie dans un instant ! 😊", "products": []}
+        logger.error("Exception during chat: %s", e)
+        return {"reply": "Désolé, j'ai eu un souci. Réessaie dans un instant !", "products": []}

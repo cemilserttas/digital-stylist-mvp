@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { useWeather } from '@/hooks/useWeather';
 import UserForm from '@/components/UserForm';
 import UploadSection from '@/components/UploadSection';
 import WardrobeGallery from '@/components/WardrobeGallery';
@@ -10,55 +11,15 @@ import WeatherAnimation from '@/components/WeatherAnimation';
 import UserSettings from '@/components/UserSettings';
 import ChatBot from '@/components/ChatBot';
 import StylePreferences from '@/components/StylePreferences';
+import SuggestionsSection from '@/components/SuggestionsSection';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { getWardrobe, getDailySuggestions, saveClick, updateUser } from '@/lib/api';
+import type { User, ClothingItem, Suggestion, SuggestionPiece, TabType } from '@/lib/types';
+import { buildShopUrl } from '@/lib/utils';
 import {
   Shirt, Sparkles, Cloud, Sun, CloudRain, CloudSnow, CloudLightning,
-  CloudDrizzle, Wind, MapPin, Clock, ExternalLink, Loader2, Settings, ShoppingBag, Heart
+  CloudDrizzle, Wind, MapPin, Clock, Settings, Heart
 } from 'lucide-react';
-
-interface User {
-  id: number;
-  prenom: string;
-  morphologie: string;
-  genre: string;
-  age: number;
-  style_prefere?: string | null;
-}
-
-interface ClothingItem {
-  id: number;
-  type: string;
-  couleur: string;
-  saison: string;
-  tags_ia: string;
-  image_path: string;
-  category?: string;
-}
-
-interface SuggestionPiece {
-  type: string;
-  marque: string;
-  prix: number;
-  lien_recherche: string;
-}
-
-interface Suggestion {
-  titre: string;
-  description: string;
-  pieces: SuggestionPiece[];
-  occasion: string;
-}
-
-interface WeatherData {
-  temperature: number;
-  description: string;
-  ville: string;
-  icon: string;
-  humidity?: number;
-  wind_speed?: number;
-}
-
-type TabType = 'home' | 'wardrobe' | 'wishlist';
 
 function WeatherIcon({ code }: { code: string }) {
   if (code.includes('thunder')) return <CloudLightning className="w-8 h-8 text-yellow-400" />;
@@ -70,10 +31,6 @@ function WeatherIcon({ code }: { code: string }) {
   return <Sun className="w-8 h-8 text-yellow-400" />;
 }
 
-function buildShopUrl(searchTerms: string): string {
-  return `https://www.google.com/search?btnI=1&q=${encodeURIComponent(searchTerms + ' acheter')}`;
-}
-
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [wardrobeItems, setWardrobeItems] = useState<ClothingItem[]>([]);
@@ -81,10 +38,10 @@ export default function Home() {
   const [loadingWardrobe, setLoadingWardrobe] = useState(false);
   const [loadingWishlist, setLoadingWishlist] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('home');
-  const { playPop, playSuccessChime, playSwipe } = useSoundEffects();
+  const { playPop, playSuccessChime } = useSoundEffects();
 
   // Weather & time
-  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const weather = useWeather();
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Suggestions — restored from cache to avoid unnecessary API calls
@@ -109,85 +66,6 @@ export default function Home() {
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
-  }, []);
-
-  // Geolocation + weather
-  useEffect(() => {
-    async function fetchWeather(lat: number, lon: number) {
-      try {
-        // Reverse geocode for city name using Nominatim for better accuracy
-        let ville = 'Paris';
-        try {
-          const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`, {
-            headers: { 'Accept-Language': 'fr' }
-          });
-          const geoData = await geoRes.json();
-          if (geoData && geoData.address) {
-            ville = geoData.address.city || geoData.address.town || geoData.address.village || geoData.address.municipality || 'Paris';
-          }
-        } catch (err) {
-          console.error("Nominatim error, fallback to bigdatacloud", err);
-          const backupRes = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=fr`);
-          const backupData = await backupRes.json();
-          ville = backupData.city || backupData.locality || 'Paris';
-        }
-
-        // Open-Meteo for weather
-        const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code`);
-        const weatherData = await weatherRes.json();
-        const current = weatherData.current;
-
-        const weatherCode = current.weather_code || 0;
-        let description = 'Ensoleillé';
-        let icon = 'clear';
-        if (weatherCode >= 95) { description = 'Orage'; icon = 'thunder'; }
-        else if (weatherCode >= 80) { description = 'Averses'; icon = 'shower'; }
-        else if (weatherCode >= 71) { description = 'Neige'; icon = 'snow'; }
-        else if (weatherCode >= 61) { description = 'Pluie'; icon = 'rain'; }
-        else if (weatherCode >= 51) { description = 'Bruine'; icon = 'drizzle'; }
-        else if (weatherCode >= 45) { description = 'Brouillard'; icon = 'cloud'; }
-        else if (weatherCode >= 3) { description = 'Nuageux'; icon = 'cloud'; }
-        else if (weatherCode >= 1) { description = 'Partiellement nuageux'; icon = 'cloud'; }
-
-        setWeather({
-          temperature: Math.round(current.temperature_2m),
-          description,
-          ville,
-          icon,
-          humidity: current.relative_humidity_2m,
-          wind_speed: Math.round(current.wind_speed_10m),
-        });
-      } catch (err) {
-        console.error('Weather fetch failed:', err);
-        setWeather({ temperature: 15, description: 'Indisponible', ville: 'Paris', icon: 'cloud' });
-      }
-    }
-
-    async function handleGeolocationError() {
-      // Fallback to IP geolocation if GPS is denied or unavailable
-      try {
-        const ipRes = await fetch('https://ipapi.co/json/');
-        const ipData = await ipRes.json();
-        if (ipData.latitude && ipData.longitude) {
-          fetchWeather(ipData.latitude, ipData.longitude);
-        } else {
-          fetchWeather(48.8566, 2.3522); // Paris fallback
-        }
-      } catch (err) {
-        console.error('IP Geolocation failed:', err);
-        fetchWeather(48.8566, 2.3522); // Paris fallback
-      }
-    }
-
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => fetchWeather(pos.coords.latitude, pos.coords.longitude),
-        handleGeolocationError,
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    } else {
-      handleGeolocationError();
-    }
   }, []);
 
   // User from localStorage
@@ -280,6 +158,7 @@ export default function Home() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('stylist_token');
     localStorage.removeItem('stylist_user');
     localStorage.removeItem('stylist_suggestions');
     localStorage.removeItem('stylist_greeting');
@@ -334,8 +213,6 @@ export default function Home() {
 
   const timeStr = currentTime.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
   const dateStr = currentTime.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-
-  const gradientColors = ['from-purple-600 to-blue-600', 'from-orange-500 to-rose-600', 'from-emerald-600 to-teal-600'];
 
   return (
     <main className="min-h-screen bg-gray-950 font-sans text-white pb-20">
@@ -424,104 +301,20 @@ export default function Home() {
                 </div>
 
                 {/* Suggestions */}
-                <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h3 className="text-xl font-bold text-white">Suggestions du jour</h3>
-                      <p className="text-sm text-gray-500">Basées sur votre profil et la météo actuelle</p>
-                    </div>
-                    <button
-                      onClick={fetchSuggestions}
-                      disabled={loadingSuggestions}
-                      className="flex items-center gap-2 text-sm bg-white/5 border border-white/10 px-4 py-2 rounded-full text-gray-300 hover:bg-white/10 hover:text-white transition-all disabled:opacity-50"
-                    >
-                      {loadingSuggestions ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="w-4 h-4" />
-                      )}
-                      Nouvelles suggestions
-                    </button>
-                  </div>
-
-                  {loadingSuggestions && suggestions.length === 0 ? (
-                    <div className="text-center py-20">
-                      <Loader2 className="w-8 h-8 animate-spin text-purple-400 mx-auto mb-4" />
-                      <p className="text-gray-500">Votre styliste IA prépare vos suggestions...</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                      {suggestions.map((sug, idx) => (
-                        <div
-                          key={idx}
-                          className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-white/20 transition-all group"
-                        >
-                          {/* Gradient header */}
-                          <div className={`bg-gradient-to-r ${gradientColors[idx % 3]} p-5`}>
-                            <p className="text-xs font-bold uppercase tracking-wider text-white/70 mb-1">{sug.occasion}</p>
-                            <h4 className="text-lg font-black text-white">{sug.titre}</h4>
-                          </div>
-
-                          <div className="p-5 space-y-4">
-                            <p className="text-sm text-gray-400 leading-relaxed">{sug.description}</p>
-
-                            {/* Pieces */}
-                            <div className="space-y-2">
-                              {sug.pieces?.map((piece, pidx) => {
-                                const prixNum = typeof piece.prix === 'number' ? piece.prix : parseFloat(String(piece.prix)) || 0;
-                                const searchTerms = piece.lien_recherche || `${piece.type} ${piece.marque}`;
-                                return (
-                                  <div key={pidx} className="flex items-center justify-between bg-white/5 rounded-xl px-3 py-2.5">
-                                    <div className="flex-1 min-w-0 pr-2">
-                                      <p className="text-sm font-bold text-white truncate">{piece.type}</p>
-                                      <p className="text-xs text-gray-400 font-medium">{piece.marque}</p>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                                      <span className="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
-                                        {prixNum.toFixed(2)}€
-                                      </span>
-                                      <motion.a
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        href={buildShopUrl(searchTerms)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={() => handleProductClick(piece)}
-                                        className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg px-3 py-1.5 shadow-lg shadow-purple-500/25"
-                                      >
-                                        <ShoppingBag className="w-3.5 h-3.5 text-white" />
-                                        <span className="text-[10px] font-bold text-white uppercase tracking-wider">Acheter</span>
-                                      </motion.a>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            {/* Calculated Total */}
-                            {(() => {
-                              const total = (sug.pieces || []).reduce((sum, p) => {
-                                const n = typeof p.prix === 'number' ? p.prix : parseFloat(String(p.prix)) || 0;
-                                return sum + n;
-                              }, 0);
-                              return (
-                                <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                                  <span className="text-xs text-gray-500">Total du look</span>
-                                  <span className="text-lg font-black text-white">{total.toFixed(2)}€</span>
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <ErrorBoundary label="Suggestions">
+                  <SuggestionsSection
+                    suggestions={suggestions}
+                    loading={loadingSuggestions}
+                    onRefresh={fetchSuggestions}
+                    onProductClick={handleProductClick}
+                  />
+                </ErrorBoundary>
               </div>
             )}
 
             {/* ===== WARDROBE / WISHLIST TABS ===== */}
             {(activeTab === 'wardrobe' || activeTab === 'wishlist') && (
+              <ErrorBoundary label="Garde-robe">
               <div className="space-y-8">
                 <UploadSection
                   userId={user.id}
@@ -573,6 +366,7 @@ export default function Home() {
                   )}
                 </div>
               </div>
+              </ErrorBoundary>
             )}
           </motion.div>
         </AnimatePresence>
@@ -627,7 +421,9 @@ export default function Home() {
 
       {/* Chatbot (adjusted position due to bottom nav) */}
       <div className="fixed bottom-24 right-4 sm:right-6 z-50">
-        <ChatBot userId={user.id} userName={user.prenom} />
+        <ErrorBoundary label="Chatbot">
+          <ChatBot userId={user.id} userName={user.prenom} />
+        </ErrorBoundary>
       </div>
 
     </main>

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Shield, Trash2, Users, Shirt, LogOut, AlertTriangle, RefreshCw } from 'lucide-react';
-import { api } from '../../lib/api';
 
 interface UserData {
     id: number;
@@ -33,19 +32,24 @@ export default function AdminPage() {
         setError('');
         try {
             const [usersRes, statsRes] = await Promise.all([
-                api.get('/admin/users', { headers: { 'x-admin-key': adminKey } }),
-                api.get('/admin/stats', { headers: { 'x-admin-key': adminKey } }),
+                fetch('/api/admin/users', { headers: { 'x-admin-key': adminKey } }),
+                fetch('/api/admin/stats', { headers: { 'x-admin-key': adminKey } }),
             ]);
-            setUsers(usersRes.data.users);
-            setStats(statsRes.data);
-        } catch (err: unknown) {
-            const error = err as { response?: { status?: number } };
-            if (error.response?.status === 403) {
+            if (usersRes.status === 403 || statsRes.status === 403) {
                 setError('Clé admin invalide');
                 setIsAuthenticated(false);
-            } else {
-                setError('Erreur de connexion au serveur');
+                return;
             }
+            if (!usersRes.ok || !statsRes.ok) {
+                setError('Erreur de connexion au serveur');
+                return;
+            }
+            const usersData = await usersRes.json();
+            const statsData = await statsRes.json();
+            setUsers(usersData.users);
+            setStats(statsData);
+        } catch {
+            setError('Erreur de connexion au serveur');
         } finally {
             setLoading(false);
         }
@@ -66,10 +70,13 @@ export default function AdminPage() {
         if (!confirm(`⚠️ Supprimer "${userName}" et TOUTES ses données (vêtements, images) ? Cette action est irréversible.`)) return;
         setDeletingId(userId);
         try {
-            const res = await api.delete(`/admin/users/${userId}`, {
+            const res = await fetch(`/api/admin/users/${userId}`, {
+                method: 'DELETE',
                 headers: { 'x-admin-key': adminKey },
             });
-            alert(`✅ ${res.data.message}\n${res.data.deleted_items} vêtement(s) et ${res.data.deleted_files} image(s) supprimé(s).`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail);
+            alert(`✅ ${data.message}\n${data.deleted_items} vêtement(s) et ${data.deleted_files} image(s) supprimé(s).`);
             fetchData();
         } catch {
             alert('❌ Erreur lors de la suppression');

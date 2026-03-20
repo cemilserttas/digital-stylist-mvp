@@ -6,6 +6,32 @@ export const api = axios.create({
     baseURL: API_URL,
 });
 
+// Attach JWT token to every request
+api.interceptors.request.use((config) => {
+    if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('stylist_token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+    }
+    return config;
+});
+
+// On 401, clear session and reload
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401 && typeof window !== 'undefined') {
+            localStorage.removeItem('stylist_token');
+            localStorage.removeItem('stylist_user');
+            localStorage.removeItem('stylist_suggestions');
+            localStorage.removeItem('stylist_greeting');
+            window.location.reload();
+        }
+        return Promise.reject(error);
+    }
+);
+
 export const createUser = async (data: { prenom: string; morphologie: string; genre: string; age: number }) => {
     const response = await api.post('/users/create', data);
     return response.data;

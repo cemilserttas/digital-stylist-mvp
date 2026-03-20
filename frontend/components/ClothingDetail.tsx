@@ -3,15 +3,8 @@
 import { useState } from 'react';
 import { X, Shirt, Palette, Sun, Scissors, User, Sparkles, Lightbulb, ExternalLink, ShoppingBag, Star, AlertTriangle, CheckCircle, DollarSign } from 'lucide-react';
 import { getImageUrl } from '../lib/api';
-
-interface ClothingItem {
-    id: number;
-    type: string;
-    couleur: string;
-    saison: string;
-    tags_ia: string;
-    image_path: string;
-}
+import type { ClothingItem } from '../lib/types';
+import { buildShopUrl } from '../lib/utils';
 
 interface ProductRecommendation {
     nom: string;
@@ -64,10 +57,6 @@ interface DetectedItem {
 interface ClothingDetailProps {
     item: ClothingItem;
     onClose: () => void;
-}
-
-function buildShopUrl(searchTerms: string): string {
-    return `https://www.google.com/search?btnI=1&q=${encodeURIComponent(searchTerms + ' acheter')}`;
 }
 
 function buildAmazonUrl(searchTerms: string): string {

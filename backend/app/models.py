@@ -30,11 +30,12 @@ class UserBase(SQLModel):
 # Database model
 class User(UserBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
+    password_hash: Optional[str] = Field(default=None, exclude=True)
     clothing_items: List["ClothingItem"] = Relationship(back_populates="user")
     link_clicks: List["LinkClick"] = Relationship(back_populates="user")
 
 class UserCreate(UserBase):
-    pass
+    password: str
 
 class UserRead(UserBase):
     id: int

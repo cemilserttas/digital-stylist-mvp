@@ -1,22 +1,80 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel, field_validator
+import logging
 import os
-import re
 
 from app.database import init_db, get_session
 from app.models import User
 from app.routers import wardrobe, users, admin
 from app.services.ai_service import get_daily_suggestions, chat_with_stylist
+from app.auth import get_current_user
+
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO"),
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
+class WeatherRequest(BaseModel):
+    temperature: float
+    description: str
+    ville: str = "Paris"
+
+
+class ChatRequest(BaseModel):
+    message: str
+    history: list = []
+
+    @field_validator("message")
+    @classmethod
+    def message_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Le message ne peut pas être vide")
+        if len(v) > 1000:
+            raise ValueError("Message trop long (max 1000 caractères)")
+        return v
+
+    @field_validator("history")
+    @classmethod
+    def history_limit(cls, v: list) -> list:
+        return v[-20:]
+
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
+    admin_key = os.getenv("ADMIN_KEY")
+    if not admin_key:
+        logger.warning("ADMIN_KEY non définie — endpoints admin non protégés")
+    elif len(admin_key) < 16:
+        raise RuntimeError("ADMIN_KEY trop courte (minimum 16 caractères)")
     await init_db()
+    logger.info("Digital Stylist API démarrée")
     yield
 
 app = FastAPI(title="Digital Stylist API", lifespan=lifespan)
+
+
+# ---------------------------------------------------------------------------
+# Global exception handler — catch-all for unhandled errors
+# ---------------------------------------------------------------------------
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    # Let HTTPException pass through to FastAPI's default handler
+    if isinstance(exc, HTTPException):
+        raise exc
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Erreur interne du serveur"},
+    )
+
 
 # CORS Configuration
 origins = [
@@ -54,44 +112,36 @@ def read_root():
 @app.post("/suggestions/{user_id}")
 async def daily_suggestions(
     user_id: int,
-    weather_data: dict,
-    session: AsyncSession = Depends(get_session),
+    weather_data: WeatherRequest,
+    current_user: User = Depends(get_current_user),
 ):
-    user = await session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Accès refusé")
 
     profile = {
-        "prenom": user.prenom,
-        "genre": user.genre,
-        "age": user.age,
-        "morphologie": user.morphologie,
+        "prenom": current_user.prenom,
+        "genre": current_user.genre,
+        "age": current_user.age,
+        "morphologie": current_user.morphologie,
     }
-    result = await get_daily_suggestions(profile, weather_data)
+    result = await get_daily_suggestions(profile, weather_data.model_dump())
     return result
 
 
 @app.post("/chat/{user_id}")
 async def chat_endpoint(
     user_id: int,
-    body: dict,
-    session: AsyncSession = Depends(get_session),
+    body: ChatRequest,
+    current_user: User = Depends(get_current_user),
 ):
-    user = await session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    message = body.get("message", "")
-    history = body.get("history", [])
-
-    if not message.strip():
-        return {"reply": "Dis-moi ce que tu recherches ! 😊", "products": []}
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Accès refusé")
 
     profile = {
-        "prenom": user.prenom,
-        "genre": user.genre,
-        "age": user.age,
-        "morphologie": user.morphologie,
+        "prenom": current_user.prenom,
+        "genre": current_user.genre,
+        "age": current_user.age,
+        "morphologie": current_user.morphologie,
     }
-    result = await chat_with_stylist(profile, message, history)
+    result = await chat_with_stylist(profile, body.message, body.history)
     return result
