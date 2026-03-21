@@ -2,7 +2,6 @@ import os
 import json
 import re
 import logging
-import traceback
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
@@ -266,7 +265,7 @@ async def analyze_clothing_image(image_bytes: bytes, mime_type: str = "image/jpe
 
     except Exception as e:
         logger.error("Exception during image analysis: %s", e)
-        traceback.print_exc()
+        logger.exception("Traceback for image analysis failure:")
         return fallback_result
 
 

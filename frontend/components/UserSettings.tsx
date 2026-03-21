@@ -184,11 +184,11 @@ export default function UserSettings({ user, onBack, onUserUpdated, onLogout }: 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
                 <div className="flex flex-col md:flex-row gap-6">
                     {/* Sidebar */}
-                    <div className="md:w-64 flex-shrink-0">
+                    <div className="md:w-64 shrink-0">
                         <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
                             {/* User card */}
                             <div className="p-5 border-b border-white/5 text-center">
-                                <div className="w-16 h-16 mx-auto bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center text-2xl font-black mb-3">
+                                <div className="w-16 h-16 mx-auto bg-linear-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center text-2xl font-black mb-3">
                                     {user.prenom.charAt(0).toUpperCase()}
                                 </div>
                                 <p className="font-bold text-white">{user.prenom}</p>
@@ -206,7 +206,7 @@ export default function UserSettings({ user, onBack, onUserUpdated, onLogout }: 
                                             : 'text-gray-400 hover:text-white hover:bg-white/5'
                                             }`}
                                     >
-                                        <Icon className={`w-4 h-4 flex-shrink-0 ${key === 'danger' && activeTab === key ? 'text-red-400' :
+                                        <Icon className={`w-4 h-4 shrink-0 ${key === 'danger' && activeTab === key ? 'text-red-400' :
                                             activeTab === key ? 'text-purple-400' : ''
                                             }`} />
                                         <div className="flex-1 min-w-0">
@@ -430,7 +430,7 @@ export default function UserSettings({ user, onBack, onUserUpdated, onLogout }: 
                                                         href={click.url}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0"
+                                                        className="p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors shrink-0"
                                                     >
                                                         <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
                                                     </a>

@@ -42,7 +42,7 @@ export default function WeatherAnimation({ weatherCode }: WeatherAnimationProps)
             {/* Gradient overlays per weather */}
             {type === 'sun' && (
                 <>
-                    <div className="absolute inset-0 bg-gradient-to-br from-amber-500/15 to-orange-400/10" />
+                    <div className="absolute inset-0 bg-linear-to-br from-amber-500/15 to-orange-400/10" />
                     {/* Sun rays */}
                     <div className="sun-glow" />
                     {particles.slice(0, 8).map((p) => (
@@ -77,7 +77,7 @@ export default function WeatherAnimation({ weatherCode }: WeatherAnimationProps)
 
             {type === 'clouds' && (
                 <>
-                    <div className="absolute inset-0 bg-gradient-to-br from-slate-400/15 to-gray-500/10" />
+                    <div className="absolute inset-0 bg-linear-to-br from-slate-400/15 to-gray-500/10" />
                     {particles.slice(0, 6).map((p) => (
                         <div
                             key={p.id}
@@ -97,7 +97,7 @@ export default function WeatherAnimation({ weatherCode }: WeatherAnimationProps)
 
             {(type === 'rain' || type === 'thunder') && (
                 <>
-                    <div className="absolute inset-0 bg-gradient-to-b from-blue-900/20 to-slate-800/15" />
+                    <div className="absolute inset-0 bg-linear-to-b from-blue-900/20 to-slate-800/15" />
                     {particles.map((p) => (
                         <div
                             key={p.id}
@@ -117,7 +117,7 @@ export default function WeatherAnimation({ weatherCode }: WeatherAnimationProps)
 
             {type === 'drizzle' && (
                 <>
-                    <div className="absolute inset-0 bg-gradient-to-b from-blue-800/10 to-slate-700/10" />
+                    <div className="absolute inset-0 bg-linear-to-b from-blue-800/10 to-slate-700/10" />
                     {particles.slice(0, 40).map((p) => (
                         <div
                             key={p.id}
@@ -135,7 +135,7 @@ export default function WeatherAnimation({ weatherCode }: WeatherAnimationProps)
 
             {type === 'snow' && (
                 <>
-                    <div className="absolute inset-0 bg-gradient-to-b from-blue-200/10 to-white/5" />
+                    <div className="absolute inset-0 bg-linear-to-b from-blue-200/10 to-white/5" />
                     {particles.map((p) => (
                         <div
                             key={p.id}
@@ -155,7 +155,7 @@ export default function WeatherAnimation({ weatherCode }: WeatherAnimationProps)
 
             {type === 'wind' && (
                 <>
-                    <div className="absolute inset-0 bg-gradient-to-r from-gray-400/10 to-transparent" />
+                    <div className="absolute inset-0 bg-linear-to-r from-gray-400/10 to-transparent" />
                     {particles.slice(0, 15).map((p) => (
                         <div
                             key={p.id}

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Upload, Shirt, Loader2, Sparkles } from 'lucide-react';
+import { Upload, Shirt, Loader2, Sparkles, Camera } from 'lucide-react';
 import { api } from '../lib/api';
 
 interface UploadSectionProps {
@@ -12,6 +12,7 @@ export default function UploadSection({ userId, category, onUploadComplete }: Up
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const cameraInputRef = useRef<HTMLInputElement>(null);
 
     const isWishlist = category === 'wishlist';
 
@@ -47,7 +48,7 @@ export default function UploadSection({ userId, category, onUploadComplete }: Up
 
     return (
         <div className={`w-full p-6 rounded-2xl shadow-sm border flex flex-col md:flex-row items-center justify-between gap-6 transition-all hover:shadow-md ${isWishlist
-                ? 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-100'
+                ? 'bg-linear-to-r from-purple-50 to-pink-50 border-purple-100'
                 : 'bg-white border-gray-100'
             }`}>
             <div className="flex items-center gap-4">
@@ -71,38 +72,58 @@ export default function UploadSection({ userId, category, onUploadComplete }: Up
             </div>
 
             <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-                <label
-                    htmlFor={`upload-${category}`}
-                    className={`
-                        cursor-pointer flex items-center gap-2 px-6 py-3 rounded-full font-medium shadow-lg hover:shadow-xl transition-all transform active:scale-95
-                        ${uploading ? 'opacity-75 cursor-not-allowed' : ''}
-                        ${isWishlist
-                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700'
-                            : 'bg-black text-white hover:bg-gray-900'
-                        }
-                    `}
-                >
-                    {uploading ? (
-                        <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            <span>Analyse IA en cours...</span>
-                        </>
-                    ) : (
-                        <>
+                {uploading ? (
+                    <div className={`flex items-center gap-2 px-6 py-3 rounded-full font-medium opacity-75 ${isWishlist ? 'bg-linear-to-r from-purple-600 to-pink-600 text-white' : 'bg-black text-white'}`}>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Analyse IA en cours...</span>
+                    </div>
+                ) : (
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {/* Camera — mobile only: opens rear camera directly */}
+                        <label
+                            htmlFor={`camera-${category}`}
+                            className={`sm:hidden cursor-pointer flex items-center gap-2 px-4 py-3 rounded-full font-medium shadow-lg transition-all active:scale-95 border border-white/20 bg-white/10 text-white`}
+                            title="Prendre une photo"
+                        >
+                            <Camera className="w-5 h-5" />
+                            <span>Photo</span>
+                            <input
+                                id={`camera-${category}`}
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                className="hidden"
+                                onChange={handleFileChange}
+                                disabled={uploading}
+                                ref={cameraInputRef}
+                            />
+                        </label>
+
+                        {/* Gallery / file picker */}
+                        <label
+                            htmlFor={`upload-${category}`}
+                            className={`
+                                cursor-pointer flex items-center gap-2 px-6 py-3 rounded-full font-medium shadow-lg hover:shadow-xl transition-all active:scale-95
+                                ${isWishlist
+                                    ? 'bg-linear-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700'
+                                    : 'bg-black text-white hover:bg-gray-900'
+                                }
+                            `}
+                        >
                             <Upload className="w-5 h-5" />
-                            <span>{isWishlist ? 'Charger un look' : 'Charger une photo'}</span>
-                        </>
-                    )}
-                    <input
-                        id={`upload-${category}`}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleFileChange}
-                        disabled={uploading}
-                        ref={fileInputRef}
-                    />
-                </label>
+                            <span>{isWishlist ? 'Charger un look' : 'Galerie'}</span>
+                            <input
+                                id={`upload-${category}`}
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleFileChange}
+                                disabled={uploading}
+                                ref={fileInputRef}
+                            />
+                        </label>
+                    </div>
+                )}
                 {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
             </div>
         </div>

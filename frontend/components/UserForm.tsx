@@ -80,7 +80,7 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
     };
 
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-gray-950 via-gray-900 to-black p-4">
+        <div className="min-h-screen w-full flex items-center justify-center bg-linear-to-br from-gray-950 via-gray-900 to-black p-4">
             {/* Background pattern */}
             <div className="fixed inset-0 opacity-5" style={{
                 backgroundImage: 'radial-gradient(circle at 25% 25%, white 1px, transparent 1px)',
@@ -346,7 +346,7 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                                         <button
                                             type="submit"
                                             disabled={loading}
-                                            className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3.5 rounded-xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 active:scale-[0.98] shadow-lg shadow-purple-500/25"
+                                            className="flex-1 bg-linear-to-r from-purple-600 to-pink-600 text-white py-3.5 rounded-xl font-bold hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 active:scale-[0.98] shadow-lg shadow-purple-500/25"
                                         >
                                             {loading ? (
                                                 <span className="flex items-center justify-center gap-2">

@@ -195,7 +195,7 @@ export default function Home() {
   const dateStr = currentTime.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <main className="min-h-screen bg-gray-950 font-sans text-white pb-20">
+    <main className="min-h-screen bg-gray-950 font-sans text-white" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
       <header className="sticky top-0 z-30 bg-gray-950/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -204,7 +204,14 @@ export default function Home() {
               DIGITAL<span className="text-purple-400">STYLIST</span>
             </h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Mobile: temperature chip only */}
+            {weather && (
+              <div className="flex sm:hidden items-center gap-1 text-sm font-bold text-white bg-white/5 px-2.5 py-1 rounded-full">
+                <span>{weather.temperature}°</span>
+              </div>
+            )}
+            {/* Desktop: full weather + time + name */}
             <div className="hidden sm:flex items-center gap-3">
               {weather && (
                 <div className="flex items-center gap-2 text-sm text-gray-400">
@@ -285,7 +292,7 @@ export default function Home() {
         wardrobeCount={wardrobeItems.length} wishlistCount={wishlistItems.length}
       />
 
-      <div className="fixed bottom-24 right-4 sm:right-6 z-50">
+      <div className="fixed right-4 sm:right-6 z-50" style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
         <ErrorBoundary label="Chatbot">
           <ChatBot userId={user.id} userName={user.prenom} />
         </ErrorBoundary>

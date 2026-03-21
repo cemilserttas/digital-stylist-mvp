@@ -130,7 +130,7 @@ export default function StylePreferences({ userName, initialPreferences, onCompl
                 </div>
                 <div className="h-1 bg-white/5 rounded-full overflow-hidden">
                     <div
-                        className="h-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all duration-500 rounded-full"
+                        className="h-full bg-linear-to-r from-green-500 to-emerald-400 transition-all duration-500 rounded-full"
                         style={{ width: `${((step + 1) / STYLE_CATEGORIES.length) * 100}%` }}
                     />
                 </div>
@@ -206,7 +206,7 @@ export default function StylePreferences({ userName, initialPreferences, onCompl
                     onClick={handleNext}
                     disabled={currentSelections.length === 0}
                     className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed ${isLast
-                        ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:shadow-lg hover:shadow-green-500/20'
+                        ? 'bg-linear-to-r from-green-500 to-emerald-500 text-white hover:shadow-lg hover:shadow-green-500/20'
                         : 'bg-white text-gray-900 hover:bg-gray-100'
                         }`}
                 >

@@ -3,6 +3,37 @@
 Journal de bord des sessions de développement.
 Format : Score avant → Score après | Actions | Bloqueurs
 
+## Session 2026-03-21 — Mobile Readiness
+Score avant : 17/17 → Score après : 17/17 (mobile-ready ajouté)
+Actions effectuées :
+- layout.tsx : viewportFit='cover' + apple-touch-icon (iPhone notch + home screen icon) ✅
+- globals.css : variables CSS safe area (--sat, --sab) + classes .pb-safe et .pb-safe-or-4 ✅
+- BottomNav.tsx : pb-safe fonctionne désormais via CSS (sans plugin Tailwind) ✅
+- page.tsx : paddingBottom utilise env(safe-area-inset-bottom) ✅
+- UploadSection.tsx : bouton 📷 "Photo" (capture="environment") visible mobile only ✅
+- page.tsx header : température affichée sur mobile (chip compact) ✅
+- components/PWAInstallPrompt.tsx : bannière "Ajouter à l'écran d'accueil" (Android + iOS) ✅
+- layout.tsx : PWAInstallPrompt inclus ✅
+- ChatBot.tsx : fenêtre full-width mobile, maxHeight=100dvh, FAB position safe-area aware ✅
+- ChatBot.tsx : input avec inputMode="text", autoComplete/autoCorrect off ✅
+- Build frontend : ✅ clean (0 erreurs TypeScript)
+Bloqueurs rencontrés : aucun
+Prochaine session : /pre-deploy — configurer les vars d'env Render+Vercel pour le déploiement
+
+## Session 2026-03-21 (continuation)
+Score avant : 16/17 → Score après : 17/17
+Actions effectuées :
+- ai_service.py : supprimé `import traceback`, remplacé par `logger.exception()` ✅
+- admin.py : ajout `premium_users` count dans stats, `is_premium`/`premium_until` dans users list ✅
+- admin/page.tsx : KPI Premium (Crown), colonne Premium dans table utilisateurs ✅
+- firebase installé (`npm install firebase --legacy-peer-deps`) ✅
+- clothes.py (déprécié) supprimé — élimine le dernier `print()` du backend ✅
+- Build frontend : ✅ clean (0 erreurs TypeScript)
+- Tous les fichiers Python : ✅ AST parse propre
+Bloqueurs rencontrés : @sentry/nextjs peer conflict avec Next.js 16 (contourné --legacy-peer-deps)
+Prochaine session : /pre-deploy + /new-feature affiliate-links
+
+
 ---
 
 ## Session 2026-03-19

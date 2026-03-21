@@ -161,7 +161,7 @@ export default function ClothingDetail({ item, onClose }: ClothingDetailProps) {
                 {/* ===== TOP: Image + Info ===== */}
                 <div className="flex flex-col md:flex-row">
                     {/* Image */}
-                    <div className="md:w-5/12 bg-gray-100 relative overflow-hidden flex-shrink-0 rounded-tl-3xl rounded-tr-3xl md:rounded-tr-none">
+                    <div className="md:w-5/12 bg-gray-100 relative overflow-hidden shrink-0 rounded-tl-3xl rounded-tr-3xl md:rounded-tr-none">
                         <img
                             src={getImageUrl(item.image_path)}
                             alt={item.type}
@@ -173,7 +173,7 @@ export default function ClothingDetail({ item, onClose }: ClothingDetailProps) {
 
                         {/* Look Score Badge on image */}
                         {hasEvaluation && (
-                            <div className={`absolute top-3 right-3 bg-gradient-to-r ${getNoteColor(evaluation.note)} text-white px-4 py-2 rounded-2xl shadow-lg`}>
+                            <div className={`absolute top-3 right-3 bg-linear-to-r ${getNoteColor(evaluation.note)} text-white px-4 py-2 rounded-2xl shadow-lg`}>
                                 <div className="flex items-center gap-2">
                                     <span className="text-2xl font-black">{evaluation.note}</span>
                                     <span className="text-xs font-bold opacity-90">/5</span>
@@ -218,7 +218,7 @@ export default function ClothingDetail({ item, onClose }: ClothingDetailProps) {
 
                         {/* ===== LOOK EVALUATION ===== */}
                         {hasEvaluation && (
-                            <div className={`bg-gradient-to-r ${getNoteColor(evaluation.note)} rounded-2xl p-5 mb-6 text-white`}>
+                            <div className={`bg-linear-to-r ${getNoteColor(evaluation.note)} rounded-2xl p-5 mb-6 text-white`}>
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-3">
                                         <StarRating note={evaluation.note} />
@@ -230,7 +230,7 @@ export default function ClothingDetail({ item, onClose }: ClothingDetailProps) {
                                 )}
                                 {evaluation.points_forts && (
                                     <div className="flex items-start gap-2 mt-2">
-                                        <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-white/80" />
+                                        <CheckCircle className="w-4 h-4 mt-0.5 shrink-0 text-white/80" />
                                         <p className="text-xs text-white/80">{evaluation.points_forts}</p>
                                     </div>
                                 )}
@@ -287,7 +287,7 @@ export default function ClothingDetail({ item, onClose }: ClothingDetailProps) {
 
                         {/* Styling advice */}
                         {conseils && (
-                            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl p-5 text-white">
+                            <div className="bg-linear-to-br from-gray-900 to-gray-800 rounded-2xl p-5 text-white">
                                 <div className="flex items-center gap-2 mb-2">
                                     <Lightbulb className="w-4 h-4 text-yellow-400" />
                                     <h3 className="text-xs font-bold uppercase tracking-wider text-gray-300">
@@ -304,7 +304,7 @@ export default function ClothingDetail({ item, onClose }: ClothingDetailProps) {
 
                 {/* ===== MISSING PIECES (if score < 5) ===== */}
                 {hasMissingPieces && (
-                    <div className="border-t border-gray-100 bg-gradient-to-r from-amber-50 to-orange-50 p-6 md:p-8">
+                    <div className="border-t border-gray-100 bg-linear-to-r from-amber-50 to-orange-50 p-6 md:p-8">
                         <div className="flex items-center gap-3 mb-5">
                             <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
                                 <AlertTriangle className="w-5 h-5 text-amber-600" />
@@ -394,7 +394,7 @@ export default function ClothingDetail({ item, onClose }: ClothingDetailProps) {
                             {products.map((product, index) => (
                                 <div
                                     key={index}
-                                    className="flex-shrink-0 w-64 bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 hover:border-gray-300 hover:shadow-lg transition-all duration-300 snap-start"
+                                    className="shrink-0 w-64 bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 hover:border-gray-300 hover:shadow-lg transition-all duration-300 snap-start"
                                 >
                                     <div className="p-5">
                                         <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">

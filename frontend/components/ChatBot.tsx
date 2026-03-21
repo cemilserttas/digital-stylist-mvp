@@ -103,11 +103,15 @@ export default function ChatBot({ userId, userName }: ChatBotProps) {
         <>
             {/* Chat Window */}
             {isOpen && (
-                <div className="fixed bottom-24 right-4 sm:right-6 z-50 w-[360px] max-w-[calc(100vw-2rem)] bg-gray-900 border border-white/10 rounded-2xl shadow-2xl shadow-purple-500/10 flex flex-col overflow-hidden"
-                    style={{ height: '520px' }}
+                <div
+                    className="fixed inset-x-4 sm:inset-x-auto sm:right-6 sm:left-auto sm:w-[360px] z-50 bg-gray-900 border border-white/10 rounded-2xl shadow-2xl shadow-purple-500/10 flex flex-col overflow-hidden"
+                    style={{
+                        bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))',
+                        maxHeight: 'calc(100dvh - 8rem)',
+                    }}
                 >
                     {/* Header */}
-                    <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-5 py-4 flex items-center justify-between flex-shrink-0">
+                    <div className="bg-linear-to-r from-purple-600 to-blue-600 px-5 py-4 flex items-center justify-between shrink-0">
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
                                 <Sparkles className="w-5 h-5 text-white" />
@@ -153,14 +157,14 @@ export default function ChatBot({ userId, userName }: ChatBotProps) {
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         onClick={() => handleProductClick(product)}
-                                                        className="flex flex-col gap-2 bg-gradient-to-br from-white/5 to-white/10 hover:from-white/10 hover:to-white/20 border border-white/10 rounded-xl p-3 transition-colors group shadow-lg"
+                                                        className="flex flex-col gap-2 bg-linear-to-br from-white/5 to-white/10 hover:from-white/10 hover:to-white/20 border border-white/10 rounded-xl p-3 transition-colors group shadow-lg"
                                                     >
                                                         <div className="flex justify-between items-start gap-2">
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-sm font-bold text-white leading-tight">{product.name}</p>
                                                                 <p className="text-[10px] text-purple-300 font-medium tracking-wide uppercase mt-0.5">{product.marque}</p>
                                                             </div>
-                                                            <span className="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400 flex-shrink-0">
+                                                            <span className="text-sm font-black text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-pink-400 shrink-0">
                                                                 {prix.toFixed(2)}€
                                                             </span>
                                                         </div>
@@ -198,7 +202,7 @@ export default function ChatBot({ userId, userName }: ChatBotProps) {
                     </div>
 
                     {/* Input */}
-                    <div className="border-t border-white/5 p-3 flex-shrink-0">
+                    <div className="border-t border-white/5 p-3 shrink-0">
                         <div className="flex items-center gap-2 bg-white/5 rounded-xl px-3 py-2 border border-white/10 focus-within:border-purple-500/50 transition-colors">
                             <input
                                 ref={inputRef}
@@ -208,6 +212,10 @@ export default function ChatBot({ userId, userName }: ChatBotProps) {
                                 onKeyDown={handleKeyDown}
                                 placeholder="Ex: Un look pour un date ce soir..."
                                 className="flex-1 bg-transparent text-sm text-white placeholder-gray-600 outline-none"
+                                inputMode="text"
+                                autoComplete="off"
+                                autoCorrect="off"
+                                spellCheck={false}
                                 disabled={loading}
                             />
                             <button
@@ -232,9 +240,10 @@ export default function ChatBot({ userId, userName }: ChatBotProps) {
             {/* Floating Button */}
             <button
                 onClick={() => { playPop(); setIsOpen(!isOpen); setHasNewMessage(false); }}
-                className={`fixed bottom-24 right-4 sm:right-6 z-50 w-14 h-14 rounded-full shadow-[0_0_30px_rgba(147,51,234,0.3)] flex items-center justify-center transition-all duration-300 ${isOpen
+                style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
+                className={`fixed right-4 sm:right-6 z-50 w-14 h-14 rounded-full shadow-[0_0_30px_rgba(147,51,234,0.3)] flex items-center justify-center transition-all duration-300 ${isOpen
                     ? 'bg-gray-800 rotate-0 scale-90'
-                    : 'bg-gradient-to-br from-purple-500 hover:from-purple-400 to-pink-500 hover:to-pink-400 hover:scale-105 hover:shadow-[0_0_40px_rgba(147,51,234,0.5)]'
+                    : 'bg-linear-to-br from-purple-500 hover:from-purple-400 to-pink-500 hover:to-pink-400 hover:scale-105 hover:shadow-[0_0_40px_rgba(147,51,234,0.5)]'
                     }`}
             >
                 {isOpen ? (

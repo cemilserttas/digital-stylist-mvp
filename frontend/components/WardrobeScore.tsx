@@ -185,7 +185,7 @@ export default function WardrobeScore({ userId, itemCount }: WardrobeScoreProps)
             className="w-full text-xs text-gray-500 hover:text-gray-300 transition-colors flex items-center justify-center gap-1.5 pt-1"
           >
             <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-            Relancer l'analyse
+            Relancer l&apos;analyse
           </button>
         </div>
       )}

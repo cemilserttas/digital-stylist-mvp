@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bell, BellOff, Loader2, Check } from 'lucide-react';
 import { isFirebaseConfigured, requestPushToken } from '@/lib/firebase';
@@ -12,63 +12,52 @@ export interface PushNotificationSetupProps {
   onUserUpdate: (updated: Partial<User>) => void;
 }
 
-type PushState = 'idle' | 'loading' | 'enabled' | 'disabled' | 'unsupported';
-
 export default function PushNotificationSetup({ user, onUserUpdate }: PushNotificationSetupProps) {
-  const [state, setState] = useState<PushState>('idle');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!isFirebaseConfigured || !('Notification' in window)) {
-      setState('unsupported');
-      return;
-    }
-    // Reflect current DB state
-    if ((user as User & { push_notifications_enabled?: boolean }).push_notifications_enabled) {
-      setState('enabled');
-    } else {
-      setState(Notification.permission === 'denied' ? 'unsupported' : 'idle');
-    }
-  }, [user]);
+  // Derived from props + browser state — no useEffect needed
+  const supported = typeof window !== 'undefined'
+    && isFirebaseConfigured
+    && 'Notification' in window
+    && Notification.permission !== 'denied';
 
-  if (state === 'unsupported') return null;
+  const enabled = !!(user as User & { push_notifications_enabled?: boolean }).push_notifications_enabled;
+
+  if (!supported) return null;
 
   const handleEnable = async () => {
-    setState('loading');
+    setLoading(true);
     setError(null);
     try {
       const token = await requestPushToken();
       if (!token) {
         setError('Permission refusée. Autorisez les notifications dans les réglages du navigateur.');
-        setState('idle');
         return;
       }
-      // Use the city from the user's last weather (stored in localStorage by the weather hook)
       const weatherStr = typeof window !== 'undefined' ? localStorage.getItem('stylist_weather') : null;
       const city = weatherStr ? (JSON.parse(weatherStr) as { ville?: string })?.ville : undefined;
-
       await registerFcmToken(user.id, token, city);
-      setState('enabled');
       onUserUpdate({ push_notifications_enabled: true } as Partial<User>);
     } catch (err) {
       console.error(err);
       setError('Erreur lors de l\'activation. Réessaie.');
-      setState('idle');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDisable = async () => {
-    setState('loading');
+    setLoading(true);
     setError(null);
     try {
       await unregisterFcmToken(user.id);
-      setState('idle');
       onUserUpdate({ push_notifications_enabled: false } as Partial<User>);
     } catch (err) {
       console.error(err);
       setError('Erreur lors de la désactivation.');
-      setState('enabled');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -82,11 +71,11 @@ export default function PushNotificationSetup({ user, onUserUpdate }: PushNotifi
           </p>
         </div>
 
-        {state === 'loading' ? (
+        {loading ? (
           <div className="w-10 h-10 flex items-center justify-center">
             <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
           </div>
-        ) : state === 'enabled' ? (
+        ) : enabled ? (
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}

@@ -109,6 +109,9 @@ async def get_stats(
     total_users = (await session.execute(select(func.count(User.id)))).scalar_one()
     total_items = (await session.execute(select(func.count(ClothingItem.id)))).scalar_one()
     total_clicks = (await session.execute(select(func.count(LinkClick.id)))).scalar_one()
+    premium_users = (await session.execute(
+        select(func.count(User.id)).where(User.is_premium == True)
+    )).scalar_one()
 
     # New users last 7 / 30 days
     new_users_7d = (await session.execute(
@@ -159,6 +162,7 @@ async def get_stats(
             "total": total_users,
             "new_7d": new_users_7d,
             "new_30d": new_users_30d,
+            "premium": premium_users,
             "signups_by_day": signups_by_day,
         },
         "wardrobe": {

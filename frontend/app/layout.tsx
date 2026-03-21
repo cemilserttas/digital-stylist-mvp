@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -14,6 +15,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: 'cover',
 };
 
 export const metadata: Metadata = {
@@ -26,6 +28,9 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "DigitalStylist",
+  },
+  icons: {
+    apple: '/icon-192.png',
   },
   openGraph: {
     title: "Digital Stylist — Votre styliste IA personnel",
@@ -50,6 +55,7 @@ export default function RootLayout({
     <html lang="fr">
       <body className={`${inter.variable} font-sans antialiased`}>
         <ServiceWorkerRegistration />
+        <PWAInstallPrompt />
         {children}
       </body>
     </html>

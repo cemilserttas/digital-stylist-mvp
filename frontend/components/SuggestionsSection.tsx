@@ -119,7 +119,7 @@ export default function SuggestionsSection({
                             key={idx}
                             className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-white/20 transition-all group"
                         >
-                            <div className={`bg-gradient-to-r ${GRADIENT_COLORS[idx % 3]} p-5`}>
+                            <div className={`bg-linear-to-r ${GRADIENT_COLORS[idx % 3]} p-5`}>
                                 <p className="text-xs font-bold uppercase tracking-wider text-white/70 mb-1">{sug.occasion}</p>
                                 <h4 className="text-lg font-black text-white">{sug.titre}</h4>
                             </div>
@@ -137,8 +137,8 @@ export default function SuggestionsSection({
                                                     <p className="text-sm font-bold text-white truncate">{piece.type}</p>
                                                     <p className="text-xs text-gray-400 font-medium">{piece.marque}</p>
                                                 </div>
-                                                <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                                                    <span className="text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+                                                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                                                    <span className="text-sm font-black text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-pink-400">
                                                         {prixNum.toFixed(2)}€
                                                     </span>
                                                     <motion.a
@@ -148,7 +148,7 @@ export default function SuggestionsSection({
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         onClick={() => onProductClick(piece)}
-                                                        className="flex items-center gap-1.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg px-3 py-1.5 shadow-lg shadow-purple-500/25"
+                                                        className="flex items-center gap-1.5 bg-linear-to-r from-purple-600 to-blue-600 rounded-lg px-3 py-1.5 shadow-lg shadow-purple-500/25"
                                                     >
                                                         <ShoppingBag className="w-3.5 h-3.5 text-white" />
                                                         <span className="text-[10px] font-bold text-white uppercase tracking-wider">Acheter</span>

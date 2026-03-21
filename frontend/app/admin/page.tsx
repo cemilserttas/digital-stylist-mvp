@@ -3,16 +3,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Shield, Trash2, Users, Shirt, LogOut, AlertTriangle,
-  RefreshCw, MousePointerClick, TrendingUp, Euro,
+  RefreshCw, MousePointerClick, TrendingUp, Euro, Crown,
 } from 'lucide-react';
 
 interface UserRow {
   id: number; prenom: string; morphologie: string;
   style_prefere: string | null; created_at: string; clothing_count: number;
+  is_premium: boolean; premium_until: string | null;
 }
 
 interface AdminStats {
-  users: { total: number; new_7d: number; new_30d: number; signups_by_day: { date: string; count: number }[] };
+  users: { total: number; new_7d: number; new_30d: number; premium: number; signups_by_day: { date: string; count: number }[] };
   wardrobe: { total_items: number; wardrobe: number; wishlist: number; avg_per_user: number };
   monetization: { total_clicks: number; top_brands: { marque: string; clicks: number }[]; estimated_revenue_eur: number };
 }
@@ -154,7 +155,7 @@ export default function AdminPage() {
 
         {/* KPI Row */}
         {stats && (
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
             <KPI icon={Users} label="Utilisateurs" value={stats.users.total}
               sub={`+${stats.users.new_7d} cette semaine`} color="text-blue-400" />
             <KPI icon={TrendingUp} label="Nouveaux (30j)" value={stats.users.new_30d}
@@ -163,6 +164,8 @@ export default function AdminPage() {
               sub={`~${stats.wardrobe.avg_per_user} / utilisateur`} color="text-purple-400" />
             <KPI icon={MousePointerClick} label="Clics affiliés" value={stats.monetization.total_clicks}
               sub="total produits cliqués" color="text-orange-400" />
+            <KPI icon={Crown} label="Premium" value={stats.users.premium}
+              sub={`${stats.users.total > 0 ? Math.round(stats.users.premium / stats.users.total * 100) : 0}% des utilisateurs`} color="text-amber-400" />
             <KPI icon={Euro} label="CA estimé" value={`${stats.monetization.estimated_revenue_eur} €`}
               sub="5% comm. moy. panier 30 €" color="text-yellow-400" />
           </div>
@@ -230,6 +233,7 @@ export default function AdminPage() {
                     <th className="px-5 py-3 text-left">Prénom</th>
                     <th className="px-5 py-3 text-left">Morpho</th>
                     <th className="px-5 py-3 text-center">Vêtements</th>
+                    <th className="px-5 py-3 text-center">Premium</th>
                     <th className="px-5 py-3 text-left">Inscrit le</th>
                     <th className="px-5 py-3 text-right">Action</th>
                   </tr>
@@ -247,6 +251,15 @@ export default function AdminPage() {
                         <span className={`inline-flex items-center justify-center min-w-[26px] px-2 py-0.5 rounded-full text-xs font-bold ${u.clothing_count > 0 ? 'bg-purple-500/20 text-purple-300' : 'bg-white/5 text-gray-500'}`}>
                           {u.clothing_count}
                         </span>
+                      </td>
+                      <td className="px-5 py-3 text-center">
+                        {u.is_premium ? (
+                          <span title={u.premium_until ? `jusqu'au ${fmtDate(u.premium_until)}` : ''}>
+                            <Crown className="w-4 h-4 text-amber-400 inline-block" />
+                          </span>
+                        ) : (
+                          <span className="text-gray-700">—</span>
+                        )}
                       </td>
                       <td className="px-5 py-3 text-sm text-gray-400">{fmtDate(u.created_at)}</td>
                       <td className="px-5 py-3 text-right">
