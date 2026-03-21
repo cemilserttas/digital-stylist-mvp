@@ -24,6 +24,7 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
     const [step, setStep] = useState(1);
     const [prenom, setPrenom] = useState('');
     const [password, setPassword] = useState('');
+    const [referralCode, setReferralCode] = useState('');
     const [genre, setGenre] = useState('Homme');
     const [age, setAge] = useState(25);
     const [morphologie, setMorphologie] = useState(MORPHOLOGIES[2].value);
@@ -51,6 +52,7 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                     morphologie,
                     genre,
                     age,
+                    ...(referralCode.trim() ? { referral_code: referralCode.trim() } : {}),
                 });
                 const { token, user } = response.data;
                 if (token) localStorage.setItem('stylist_token', token);
@@ -215,6 +217,18 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                             placeholder="Choisissez un mot de passe"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            Code de parrainage <span className="text-gray-500 font-normal">(optionnel)</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className="w-full px-4 py-3.5 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all uppercase"
+                                            value={referralCode}
+                                            onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                                            placeholder="REF_PRENOM_XXXX"
                                         />
                                     </div>
                                     <div>

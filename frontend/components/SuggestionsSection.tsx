@@ -1,15 +1,32 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, Sparkles, ShoppingBag } from 'lucide-react';
+import { Loader2, Sparkles, ShoppingBag, Share2, Check, Crown, Lock } from 'lucide-react';
 import type { Suggestion, SuggestionPiece } from '@/lib/types';
 import { buildShopUrl } from '@/lib/utils';
+
+async function shareSuggestion(sug: Suggestion) {
+  const total = (sug.pieces || []).reduce((sum, p) => {
+    const n = typeof p.prix === 'number' ? p.prix : parseFloat(String(p.prix)) || 0;
+    return sum + n;
+  }, 0);
+  const pieceLines = (sug.pieces || []).map(p => `• ${p.type} — ${p.marque}`).join('\n');
+  const text = `✨ Look "${sug.titre}" (${sug.occasion})\n${pieceLines}\n💶 Total : ${total.toFixed(2)} €\n\nVia Digital Stylist — ton styliste IA personnel`;
+
+  if (typeof navigator !== 'undefined' && navigator.share) {
+    await navigator.share({ title: `Look : ${sug.titre}`, text });
+  } else {
+    await navigator.clipboard.writeText(text);
+  }
+}
 
 export interface SuggestionsSectionProps {
     suggestions: Suggestion[];
     loading: boolean;
     onRefresh: () => void;
     onProductClick: (piece: SuggestionPiece) => void;
+    limitReached?: boolean;
 }
 
 const GRADIENT_COLORS = [
@@ -23,7 +40,18 @@ export default function SuggestionsSection({
     loading,
     onRefresh,
     onProductClick,
+    limitReached = false,
 }: SuggestionsSectionProps) {
+    const [sharedIdx, setSharedIdx] = useState<number | null>(null);
+
+    const handleShare = async (sug: Suggestion, idx: number) => {
+        try {
+            await shareSuggestion(sug);
+            setSharedIdx(idx);
+            setTimeout(() => setSharedIdx(null), 2000);
+        } catch { /* user cancelled share or clipboard denied */ }
+    };
+
     return (
         <div>
             <div className="flex items-center justify-between mb-6">
@@ -33,7 +61,7 @@ export default function SuggestionsSection({
                 </div>
                 <button
                     onClick={onRefresh}
-                    disabled={loading}
+                    disabled={loading || limitReached}
                     className="flex items-center gap-2 text-sm bg-white/5 border border-white/10 px-4 py-2 rounded-full text-gray-300 hover:bg-white/10 hover:text-white transition-all disabled:opacity-50"
                 >
                     {loading ? (
@@ -44,6 +72,30 @@ export default function SuggestionsSection({
                     Nouvelles suggestions
                 </button>
             </div>
+
+            {/* Premium upgrade banner when daily limit is reached */}
+            {limitReached && (
+                <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-6 bg-linear-to-r from-amber-500/15 to-orange-500/15 border border-amber-500/30 rounded-2xl p-5 flex items-start gap-4"
+                >
+                    <div className="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+                        <Crown className="w-5 h-5 text-amber-400" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-sm font-bold text-amber-300 mb-1">Limite quotidienne atteinte</p>
+                        <p className="text-xs text-gray-400 leading-relaxed">
+                            En version gratuite, vous avez droit à <strong className="text-white">1 suggestion par jour</strong>.
+                            Passez à Premium pour des suggestions illimitées, le chat sans limite et bien plus.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-amber-500/20 border border-amber-500/30 rounded-full px-3 py-1.5 shrink-0">
+                        <Lock className="w-3 h-3 text-amber-400" />
+                        <span className="text-[11px] font-bold text-amber-300">Premium</span>
+                    </div>
+                </motion.div>
+            )}
 
             {loading && suggestions.length === 0 ? (
                 <div className="text-center py-20">
@@ -102,10 +154,20 @@ export default function SuggestionsSection({
                                         const n = typeof p.prix === 'number' ? p.prix : parseFloat(String(p.prix)) || 0;
                                         return sum + n;
                                     }, 0);
+                                    const shared = sharedIdx === idx;
                                     return (
                                         <div className="flex items-center justify-between pt-3 border-t border-white/5">
                                             <span className="text-xs text-gray-500">Total du look</span>
-                                            <span className="text-lg font-black text-white">{total.toFixed(2)}€</span>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-lg font-black text-white">{total.toFixed(2)}€</span>
+                                                <button
+                                                    onClick={() => handleShare(sug, idx)}
+                                                    title={shared ? 'Copié !' : 'Partager ce look'}
+                                                    className={`p-1.5 rounded-lg transition-all ${shared ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'}`}
+                                                >
+                                                    {shared ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}
+                                                </button>
+                                            </div>
                                         </div>
                                     );
                                 })()}

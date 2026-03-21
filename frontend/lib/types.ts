@@ -8,7 +8,20 @@ export interface User {
   genre: string;
   age: number;
   style_prefere?: string | null;
+  is_premium?: boolean;
+  premium_until?: string | null;
+  referral_code?: string | null;
+  referral_count?: number;
 }
+
+export interface ReferralInfo {
+  referral_code: string | null;
+  referral_count: number;
+  referrals_until_next_reward: number;
+  reward_description: string;
+}
+
+export const FREE_ITEM_LIMIT = 20;
 
 export interface ClothingItem {
   id: number;
@@ -34,6 +47,16 @@ export interface Suggestion {
   occasion: string;
 }
 
+export interface DayForecast {
+  date: string;           // YYYY-MM-DD
+  temp_max: number;
+  temp_min: number;
+  description: string;
+  icon: string;
+  uv_index: number;
+  precipitation_probability: number;
+}
+
 export interface WeatherData {
   temperature: number;
   description: string;
@@ -41,6 +64,9 @@ export interface WeatherData {
   icon: string;
   humidity?: number;
   wind_speed?: number;
+  uv_index?: number;
+  comfort_index?: number; // 0-10 computed from temp/humidity/wind
+  forecast?: DayForecast[];
 }
 
 export type TabType = 'home' | 'wardrobe' | 'wishlist' | 'calendar';

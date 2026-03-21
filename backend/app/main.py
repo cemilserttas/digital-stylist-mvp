@@ -1,3 +1,22 @@
+import os
+import logging
+
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
+
+_SENTRY_DSN = os.getenv("SENTRY_DSN")
+if _SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=_SENTRY_DSN,
+        integrations=[StarletteIntegration(), FastApiIntegration()],
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+        environment=os.getenv("ENVIRONMENT", "production"),
+    )
+
+from datetime import date as _date
+
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,10 +27,8 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-import logging
-import os
 
-from app.database import init_db
+from app.database import init_db, get_session
 from app.models import User
 from app.routers import wardrobe, users, admin, outfit_calendar
 from app.services.ai_service import get_daily_suggestions, chat_with_stylist
@@ -118,6 +135,10 @@ app.include_router(outfit_calendar.router)
 def read_root():
     return {"message": "Welcome to Digital Stylist API"}
 
+FREE_SUGGESTIONS_PER_DAY = 1
+FREE_CHAT_PER_DAY = 5
+
+
 @app.post("/suggestions/{user_id}")
 @limiter.limit("10/hour")
 async def daily_suggestions(
@@ -125,9 +146,18 @@ async def daily_suggestions(
     user_id: int,
     weather_data: WeatherRequest,
     current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ):
     if current_user.id != user_id:
         raise HTTPException(status_code=403, detail="Accès refusé")
+
+    today = _date.today()
+    if not current_user.is_premium:
+        if current_user.suggestions_date == today and current_user.suggestions_count_today >= FREE_SUGGESTIONS_PER_DAY:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Limite atteinte ({FREE_SUGGESTIONS_PER_DAY} suggestion/jour en version gratuite). Passez à Premium pour un accès illimité."
+            )
 
     profile = {
         "prenom": current_user.prenom,
@@ -136,19 +166,37 @@ async def daily_suggestions(
         "morphologie": current_user.morphologie,
     }
     result = await get_daily_suggestions(profile, weather_data.model_dump())
+
+    # Increment counter after successful generation
+    current_user.suggestions_count_today = (
+        (current_user.suggestions_count_today + 1) if current_user.suggestions_date == today else 1
+    )
+    current_user.suggestions_date = today
+    session.add(current_user)
+    await session.commit()
+
     return result
 
 
 @app.post("/chat/{user_id}")
 @limiter.limit("30/hour")
 async def chat_endpoint(
-    request: Request,  # required by slowapi
+    request: Request,
     user_id: int,
     body: ChatRequest,
     current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
 ):
     if current_user.id != user_id:
         raise HTTPException(status_code=403, detail="Accès refusé")
+
+    today = _date.today()
+    if not current_user.is_premium:
+        if current_user.chat_date == today and current_user.chat_count_today >= FREE_CHAT_PER_DAY:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Limite atteinte ({FREE_CHAT_PER_DAY} messages/jour en version gratuite). Passez à Premium pour un accès illimité."
+            )
 
     profile = {
         "prenom": current_user.prenom,
@@ -157,4 +205,12 @@ async def chat_endpoint(
         "morphologie": current_user.morphologie,
     }
     result = await chat_with_stylist(profile, body.message, body.history)
+
+    current_user.chat_count_today = (
+        (current_user.chat_count_today + 1) if current_user.chat_date == today else 1
+    )
+    current_user.chat_date = today
+    session.add(current_user)
+    await session.commit()
+
     return result

@@ -55,3 +55,16 @@ Score avant : 15/17 → Score après : 17/17
 - [2026-03-20] Claude : Compat ascendante : users sans password_hash peuvent login par prénom (logged warning) ✅
 - [2026-03-20] Claude : UserForm.tsx — champ mot de passe ajouté (login + register step 1, min 4 chars) ✅
 - [2026-03-20] Claude : Backend import OK + Next.js build réussi ✅
+
+---
+
+## Session 2026-03-21 (Claude — Infrastructure)
+
+- [2026-03-21] Claude : Freemium gate /suggestions (1/jour) + /chat (5/jour) — models.py + Alembic migration f7a8b9c0d1e2 + main.py ✅
+- [2026-03-21] Claude : PostgreSQL support — database.py lit DATABASE_URL, asyncpg driver auto-activé (postgres:// → postgresql+asyncpg://) ✅
+- [2026-03-21] Claude : asyncpg==0.30.0 ajouté dans requirements.txt ✅
+- [2026-03-21] Claude : CDN storage service — app/services/storage_service.py (S3/R2 via boto3, fallback disk local) ✅
+- [2026-03-21] Claude : wardrobe.py — upload + delete passent par storage_service (plus d'écriture disque directe) ✅
+- [2026-03-21] Claude : boto3==1.38.0 ajouté dans requirements.txt ✅
+- [2026-03-21] Claude : tests/test_freemium.py — 10 tests gate freemium (suggestions + chat, limites, reset, premium bypass) ✅
+- [2026-03-21] Claude : Frontend UX freemium — SuggestionsSection banner amber quand limitReached, ChatBot message inline 🔒 sur 429, page.tsx détecte 429 → setSuggestionLimitReached ✅

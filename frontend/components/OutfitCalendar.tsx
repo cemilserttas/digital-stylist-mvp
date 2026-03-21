@@ -2,13 +2,75 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarDays, Plus, Trash2, X, Check, Shirt } from 'lucide-react';
+import { CalendarDays, Plus, Trash2, X, Check, Shirt, Cloud, Sun, CloudRain, CloudSnow, CloudLightning, Droplets } from 'lucide-react';
 import { getOutfitPlans, saveOutfitPlan, deleteOutfitPlan, getImageUrl } from '@/lib/api';
-import type { OutfitPlan, ClothingItem } from '@/lib/types';
+import type { OutfitPlan, ClothingItem, DayForecast } from '@/lib/types';
 
 export interface OutfitCalendarProps {
   userId: number;
   wardrobeItems: ClothingItem[];
+  forecast?: DayForecast[];
+}
+
+function WeatherMini({ forecast }: { forecast: DayForecast }) {
+  const icon = (() => {
+    const c = forecast.icon;
+    if (c.includes('thunder')) return <CloudLightning className="w-3 h-3 text-yellow-400" />;
+    if (c.includes('rain') || c.includes('shower')) return <CloudRain className="w-3 h-3 text-blue-400" />;
+    if (c.includes('snow')) return <CloudSnow className="w-3 h-3 text-blue-200" />;
+    if (c.includes('cloud')) return <Cloud className="w-3 h-3 text-gray-400" />;
+    return <Sun className="w-3 h-3 text-yellow-400" />;
+  })();
+
+  return (
+    <div className="flex items-center gap-1 text-[9px] text-gray-500 mt-0.5">
+      {icon}
+      <span className="font-bold text-white">{forecast.temp_max}°</span>
+      <span>{forecast.temp_min}°</span>
+      {forecast.precipitation_probability > 20 && (
+        <span className="text-blue-400 flex items-center gap-0.5">
+          <Droplets className="w-2 h-2" />{forecast.precipitation_probability}%
+        </span>
+      )}
+    </div>
+  );
+}
+
+function WeatherDetail({ forecast }: { forecast: DayForecast }) {
+  const uvColor = forecast.uv_index <= 2 ? 'text-green-400'
+    : forecast.uv_index <= 5 ? 'text-yellow-400'
+    : forecast.uv_index <= 7 ? 'text-orange-400'
+    : 'text-red-400';
+
+  const rainWarning = forecast.precipitation_probability >= 60;
+  const coldWarning = forecast.temp_max <= 8;
+  const hotWarning = forecast.temp_max >= 28;
+
+  return (
+    <div className="mb-5 bg-white/5 border border-white/10 rounded-2xl p-4">
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <p className="text-sm font-bold text-white">{forecast.temp_max}° / {forecast.temp_min}°</p>
+          <p className="text-xs text-gray-400">{forecast.description}</p>
+        </div>
+        <div className="text-right text-xs space-y-1">
+          <p className={uvColor}>UV {forecast.uv_index}</p>
+          {forecast.precipitation_probability > 0 && (
+            <p className="text-blue-400 flex items-center gap-1 justify-end">
+              <Droplets className="w-3 h-3" />{forecast.precipitation_probability}%
+            </p>
+          )}
+        </div>
+      </div>
+      {(rainWarning || coldWarning || hotWarning) && (
+        <div className="flex flex-wrap gap-1 mt-2">
+          {rainWarning && <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300">☔ Prévoir un imperméable</span>}
+          {coldWarning && <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300">🧥 Tenue chaude recommandée</span>}
+          {hotWarning && <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-300">🕶️ Tenue légère conseillée</span>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function getWeekDays(): { date: string; label: string; short: string }[] {
@@ -27,7 +89,7 @@ function getWeekDays(): { date: string; label: string; short: string }[] {
 
 const OCCASIONS = ['Travail', 'Casual', 'Sport', 'Soirée', 'RDV', 'Voyage'];
 
-export default function OutfitCalendar({ userId, wardrobeItems }: OutfitCalendarProps) {
+export default function OutfitCalendar({ userId, wardrobeItems, forecast }: OutfitCalendarProps) {
   const [plans, setPlans] = useState<OutfitPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -53,6 +115,7 @@ export default function OutfitCalendar({ userId, wardrobeItems }: OutfitCalendar
   useEffect(() => { fetchPlans(); }, [fetchPlans]);
 
   const planForDay = (date: string) => plans.find(p => p.date === date);
+  const forecastForDay = (date: string) => forecast?.find(f => f.date === date);
 
   const openDay = (date: string) => {
     const existing = planForDay(date);
@@ -107,6 +170,7 @@ export default function OutfitCalendar({ userId, wardrobeItems }: OutfitCalendar
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
           {week.map(({ date, label, short }) => {
             const plan = planForDay(date);
+            const dayForecast = forecastForDay(date);
             const items = wardrobeItems.filter(i => plan?.item_ids.includes(i.id));
             const isToday = date === week[0].date;
 
@@ -131,6 +195,7 @@ export default function OutfitCalendar({ userId, wardrobeItems }: OutfitCalendar
                     <p className="text-[9px] text-gray-600 mt-0.5 capitalize">
                       {new Date(date + 'T12:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
                     </p>
+                    {dayForecast && <WeatherMini forecast={dayForecast} />}
                   </div>
                   {plan && (
                     <button
@@ -196,6 +261,11 @@ export default function OutfitCalendar({ userId, wardrobeItems }: OutfitCalendar
                   <X className="w-5 h-5" />
                 </button>
               </div>
+
+              {/* Weather context for the selected day */}
+              {forecastForDay(selectedDay) && (
+                <WeatherDetail forecast={forecastForDay(selectedDay)!} />
+              )}
 
               {/* Occasion picker */}
               <div className="flex flex-wrap gap-2 mb-5">

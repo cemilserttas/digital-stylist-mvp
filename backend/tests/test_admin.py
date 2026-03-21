@@ -37,8 +37,10 @@ async def test_admin_stats_valid_key(client: AsyncClient, make_user):
     )
     assert resp.status_code == 200
     body = resp.json()
-    assert "total_users" in body
-    assert "total_items" in body
+    assert "users" in body
+    assert "wardrobe" in body
+    assert "monetization" in body
+    assert body["users"]["total"] >= 1
 
 
 # ---------------------------------------------------------------------------

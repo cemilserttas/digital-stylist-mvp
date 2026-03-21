@@ -1,4 +1,3 @@
-import uuid
 import os
 import json
 import logging
@@ -6,12 +5,19 @@ from collections import Counter
 from typing import List, Optional
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, func
 
 from app.database import get_session
 from app.models import ClothingItem, User, ClothingItemRead
 from app.services import ai_service
+from app.services import storage_service
 from app.auth import get_current_user
+
+try:
+    from rembg import remove as _rembg_remove
+    _REMBG_AVAILABLE = True
+except ImportError:
+    _REMBG_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +41,18 @@ async def upload_clothing_item(
     if current_user.id != user_id:
         raise HTTPException(status_code=403, detail="Accès refusé")
 
+    # Freemium limit: free users can store at most 20 items total
+    FREE_LIMIT = 20
+    if not current_user.is_premium:
+        item_count = (await session.execute(
+            select(func.count(ClothingItem.id)).where(ClothingItem.user_id == user_id)
+        )).scalar_one()
+        if item_count >= FREE_LIMIT:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Limite gratuite atteinte ({FREE_LIMIT} pièces). Passez à Premium pour en ajouter plus."
+            )
+
     # Validate category
     if category not in ("wardrobe", "wishlist"):
         category = "wardrobe"
@@ -51,19 +69,29 @@ async def upload_clothing_item(
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=422, detail="Fichier trop volumineux (max 10 Mo)")
 
-    # Generate UUID filename from validated MIME type (never use original filename)
-    ext = MIME_TO_EXT[file.content_type]
-    unique_filename = f"{uuid.uuid4()}{ext}"
-    file_location = os.path.join(UPLOAD_DIR, unique_filename)
+    # Background removal — output is always PNG with transparent background
+    save_content = content
+    save_ext = MIME_TO_EXT[file.content_type]
+    if _REMBG_AVAILABLE:
+        try:
+            import asyncio
+            loop = asyncio.get_event_loop()
+            save_content = await loop.run_in_executor(None, _rembg_remove, content)
+            save_ext = ".png"
+            logger.info("Background removed for user %d upload", user_id)
+        except Exception as e:
+            logger.warning("Background removal failed, using original: %s", e)
+            save_content = content
+            save_ext = MIME_TO_EXT[file.content_type]
 
-    # Save file
+    # Persist image via storage service (local disk or S3/R2 CDN)
     try:
-        with open(file_location, "wb") as file_object:
-            file_object.write(content)
+        image_url = await storage_service.save_image(save_content, save_ext)
     except Exception as e:
         logger.error("Could not save uploaded file: %s", e)
         raise HTTPException(status_code=500, detail="Impossible de sauvegarder le fichier")
-    
+
+    # Send original (non-removed) content to Gemini — richer color/detail for analysis
     analysis = await ai_service.analyze_clothing_image(content, mime_type=file.content_type or "image/jpeg")
 
     # Create DB Entry
@@ -74,7 +102,7 @@ async def upload_clothing_item(
         saison=analysis.get("saison", "Toutes"),
         tags_ia=analysis.get("tags_ia", ""),
         category=category,
-        image_path=file_location.replace("\\", "/")
+        image_path=image_url,
     )
     
     session.add(new_item)
@@ -113,11 +141,8 @@ async def delete_clothing_item(
     if item.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Accès refusé")
 
-    if item.image_path and os.path.exists(item.image_path):
-        try:
-            os.remove(item.image_path)
-        except Exception as e:
-            logger.warning("Could not delete image file: %s", e)
+    if item.image_path:
+        await storage_service.delete_image(item.image_path)
 
     await session.delete(item)
     await session.commit()
@@ -239,3 +264,56 @@ async def get_wardrobe_analytics(
             "premium": round(total_premium_min),
         },
     }
+
+
+@router.get("/{user_id}/score")
+async def get_wardrobe_score(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Full AI wardrobe analysis: style DNA, strengths, capsule gaps, outfit combos."""
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+
+    result = await session.execute(
+        select(ClothingItem).where(
+            ClothingItem.user_id == user_id,
+            ClothingItem.category == "wardrobe",
+        )
+    )
+    items = result.scalars().all()
+
+    if len(items) < 3:
+        raise HTTPException(
+            status_code=422,
+            detail="Ajoutez au moins 3 vêtements pour obtenir une analyse de garde-robe."
+        )
+
+    # Build item list for AI — extract style from tags_ia
+    item_dicts = []
+    for item in items:
+        style = None
+        if item.tags_ia:
+            try:
+                data = json.loads(item.tags_ia)
+                item_list = data.get("items", [])
+                if item_list:
+                    style = item_list[0].get("style")
+            except (json.JSONDecodeError, TypeError):
+                pass
+        item_dicts.append({
+            "type": item.type,
+            "couleur": item.couleur,
+            "saison": item.saison,
+            "style": style or "",
+        })
+
+    user_profile = {
+        "prenom": current_user.prenom,
+        "genre": current_user.genre,
+        "morphologie": current_user.morphologie.value if current_user.morphologie else "RECTANGLE",
+        "style_prefere": current_user.style_prefere or "",
+    }
+
+    return await ai_service.score_wardrobe(user_profile, item_dicts)

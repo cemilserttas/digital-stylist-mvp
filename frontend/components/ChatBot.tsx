@@ -80,12 +80,13 @@ export default function ChatBot({ userId, userName }: ChatBotProps) {
             };
             setMessages((prev) => [...prev, assistantMsg]);
             if (!isOpen) setHasNewMessage(true);
-        } catch (err) {
-            console.error(err);
-            setMessages((prev) => [
-                ...prev,
-                { role: 'assistant', content: 'Oups, j\'ai eu un souci réseau. Réessaie ! 😅' },
-            ]);
+        } catch (err: unknown) {
+            const status = (err as { response?: { status?: number } })?.response?.status;
+            const content = status === 429
+                ? '🔒 Limite quotidienne atteinte (5 messages/jour en version gratuite). Passez à Premium pour un chat illimité avec votre styliste IA !'
+                : 'Oups, j\'ai eu un souci réseau. Réessaie ! 😅';
+            if (status !== 429) console.error(err);
+            setMessages((prev) => [...prev, { role: 'assistant', content }]);
         } finally {
             setLoading(false);
         }

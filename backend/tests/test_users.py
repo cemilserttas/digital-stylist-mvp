@@ -123,3 +123,84 @@ async def test_delete_user_no_auth(client: AsyncClient, make_user):
     user_id = created["user"]["id"]
     resp = await client.delete(f"/users/{user_id}")
     assert resp.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Referral program
+# ---------------------------------------------------------------------------
+async def test_create_user_has_referral_code(client: AsyncClient, make_user):
+    """New users automatically get a unique referral code."""
+    data = await make_user(client, prenom="RefUser")
+    user = data["user"]
+    assert user["referral_code"] is not None
+    assert user["referral_code"].startswith("REF_")
+
+
+async def test_referral_signup(client: AsyncClient, make_user, auth_headers):
+    """Signing up with a valid referral code increments referrer's count."""
+    referrer = await make_user(client, prenom="Referrer")
+    ref_code = referrer["user"]["referral_code"]
+    assert ref_code is not None
+
+    # New user signs up using the referral code
+    resp = await client.post("/users/create", json={
+        "prenom": "Referee",
+        "morphologie": "RECTANGLE",
+        "genre": "Homme",
+        "age": 25,
+        "password": "TestPass1",
+        "referral_code": ref_code,
+    })
+    assert resp.status_code == 200
+
+    # Check referrer's count increased
+    ref_resp = await client.get(
+        f"/users/{referrer['user']['id']}/referral",
+        headers=auth_headers(referrer["token"]),
+    )
+    assert ref_resp.status_code == 200
+    info = ref_resp.json()
+    assert info["referral_count"] == 1
+    assert info["referrals_until_next_reward"] == 2  # 3 - 1 = 2 more needed
+
+
+async def test_referral_invalid_code(client: AsyncClient):
+    """Using a non-existent referral code → 400."""
+    resp = await client.post("/users/create", json={
+        "prenom": "BadRef",
+        "morphologie": "RECTANGLE",
+        "genre": "Homme",
+        "age": 25,
+        "password": "TestPass1",
+        "referral_code": "REF_INVALID_9999",
+    })
+    assert resp.status_code == 400
+
+
+async def test_referral_premium_reward(client: AsyncClient, make_user):
+    """After 3 referrals, referrer gets 1 month premium."""
+    referrer = await make_user(client, prenom="BigRef")
+    ref_code = referrer["user"]["referral_code"]
+
+    for i in range(3):
+        resp = await client.post("/users/create", json={
+            "prenom": f"Friend{i}",
+            "morphologie": "RECTANGLE",
+            "genre": "Homme",
+            "age": 25,
+            "password": "TestPass1",
+            "referral_code": ref_code,
+        })
+        assert resp.status_code == 200
+
+    # Referrer should now be premium
+    login_resp = await client.post("/users/login", json={"prenom": "BigRef", "password": "TestPass1"})
+    assert login_resp.json()["user"]["is_premium"] is True
+    assert login_resp.json()["user"]["premium_until"] is not None
+
+
+async def test_referral_info_requires_auth(client: AsyncClient, make_user):
+    """GET /users/{id}/referral without JWT → 401."""
+    created = await make_user(client, prenom="NoAuthRef")
+    resp = await client.get(f"/users/{created['user']['id']}/referral")
+    assert resp.status_code == 401

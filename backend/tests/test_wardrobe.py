@@ -1,6 +1,6 @@
 """
 Tests for /wardrobe endpoints:
-- upload valid JPEG
+- upload valid JPEG (with JWT auth)
 - invalid MIME type → 422
 - file too large (>10MB) → 422
 - delete item
@@ -58,15 +58,16 @@ MOCK_AI_RESULT = {
 # Upload valid JPEG
 # ---------------------------------------------------------------------------
 @patch("app.services.ai_service.analyze_clothing_image", new_callable=AsyncMock, return_value=MOCK_AI_RESULT)
-async def test_upload_valid_jpeg(mock_ai, client: AsyncClient, make_user):
+async def test_upload_valid_jpeg(mock_ai, client: AsyncClient, make_user, auth_headers):
     created = await make_user(client, prenom="UploadTest")
     user_id = created["user"]["id"]
+    headers = auth_headers(created["token"])
 
     jpeg_bytes = _tiny_jpeg()
     files = {"file": ("test.jpg", io.BytesIO(jpeg_bytes), "image/jpeg")}
     data = {"user_id": str(user_id), "category": "wardrobe"}
 
-    resp = await client.post("/wardrobe/upload", files=files, data=data)
+    resp = await client.post("/wardrobe/upload", files=files, data=data, headers=headers)
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["type"] == "T-shirt col rond"
@@ -77,14 +78,15 @@ async def test_upload_valid_jpeg(mock_ai, client: AsyncClient, make_user):
 # ---------------------------------------------------------------------------
 # Invalid MIME type → 422
 # ---------------------------------------------------------------------------
-async def test_upload_invalid_mime(client: AsyncClient, make_user):
+async def test_upload_invalid_mime(client: AsyncClient, make_user, auth_headers):
     created = await make_user(client, prenom="MimeTest")
     user_id = created["user"]["id"]
+    headers = auth_headers(created["token"])
 
     files = {"file": ("test.pdf", io.BytesIO(b"%PDF-1.4 fake"), "application/pdf")}
     data = {"user_id": str(user_id)}
 
-    resp = await client.post("/wardrobe/upload", files=files, data=data)
+    resp = await client.post("/wardrobe/upload", files=files, data=data, headers=headers)
     assert resp.status_code == 422
 
 
@@ -92,16 +94,16 @@ async def test_upload_invalid_mime(client: AsyncClient, make_user):
 # File too large (>10MB) → 422
 # ---------------------------------------------------------------------------
 @patch("app.services.ai_service.analyze_clothing_image", new_callable=AsyncMock, return_value=MOCK_AI_RESULT)
-async def test_upload_too_large(mock_ai, client: AsyncClient, make_user):
+async def test_upload_too_large(mock_ai, client: AsyncClient, make_user, auth_headers):
     created = await make_user(client, prenom="BigFile")
     user_id = created["user"]["id"]
+    headers = auth_headers(created["token"])
 
-    # Create content > 10MB
     big_content = b"\xff" * (10 * 1024 * 1024 + 1)
     files = {"file": ("big.jpg", io.BytesIO(big_content), "image/jpeg")}
     data = {"user_id": str(user_id)}
 
-    resp = await client.post("/wardrobe/upload", files=files, data=data)
+    resp = await client.post("/wardrobe/upload", files=files, data=data, headers=headers)
     assert resp.status_code == 422
 
 
@@ -109,22 +111,142 @@ async def test_upload_too_large(mock_ai, client: AsyncClient, make_user):
 # Delete item
 # ---------------------------------------------------------------------------
 @patch("app.services.ai_service.analyze_clothing_image", new_callable=AsyncMock, return_value=MOCK_AI_RESULT)
-async def test_delete_clothing_item(mock_ai, client: AsyncClient, make_user):
+async def test_delete_clothing_item(mock_ai, client: AsyncClient, make_user, auth_headers):
     created = await make_user(client, prenom="DeleteTest")
     user_id = created["user"]["id"]
+    headers = auth_headers(created["token"])
 
     # Upload first
     jpeg_bytes = _tiny_jpeg()
     files = {"file": ("test.jpg", io.BytesIO(jpeg_bytes), "image/jpeg")}
     data = {"user_id": str(user_id), "category": "wardrobe"}
-    upload_resp = await client.post("/wardrobe/upload", files=files, data=data)
+    upload_resp = await client.post("/wardrobe/upload", files=files, data=data, headers=headers)
+    assert upload_resp.status_code == 200, upload_resp.text
     item_id = upload_resp.json()["id"]
 
     # Delete
-    resp = await client.delete(f"/wardrobe/item/{item_id}")
+    resp = await client.delete(f"/wardrobe/item/{item_id}", headers=headers)
     assert resp.status_code == 200
 
     # Verify it's gone
-    wardrobe_resp = await client.get(f"/wardrobe/{user_id}")
+    wardrobe_resp = await client.get(f"/wardrobe/{user_id}", headers=headers)
     items = wardrobe_resp.json()
     assert all(i["id"] != item_id for i in items)
+
+
+# ---------------------------------------------------------------------------
+# Freemium limit: free users blocked at 20 items
+# ---------------------------------------------------------------------------
+@patch("app.services.ai_service.analyze_clothing_image", new_callable=AsyncMock, return_value=MOCK_AI_RESULT)
+async def test_freemium_upload_limit(_mock_ai, client: AsyncClient, make_user, auth_headers, session, make_clothing_item):
+    created = await make_user(client, prenom="FreemiumTest")
+    user_id = created["user"]["id"]
+    headers = auth_headers(created["token"])
+
+    # Insert 20 items directly in DB to hit the limit
+    for i in range(20):
+        await make_clothing_item(session, user_id=user_id, type_=f"Item{i}")
+
+    # 21st upload should be blocked
+    jpeg_bytes = _tiny_jpeg()
+    files = {"file": ("test.jpg", io.BytesIO(jpeg_bytes), "image/jpeg")}
+    data = {"user_id": str(user_id), "category": "wardrobe"}
+    resp = await client.post("/wardrobe/upload", files=files, data=data, headers=headers)
+    assert resp.status_code == 403
+    assert "Limite" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Wardrobe analytics
+# ---------------------------------------------------------------------------
+async def test_wardrobe_analytics(client: AsyncClient, make_user, auth_headers, session, make_clothing_item):
+    created = await make_user(client, prenom="AnalyticsTest")
+    user_id = created["user"]["id"]
+    headers = auth_headers(created["token"])
+
+    await make_clothing_item(session, user_id=user_id, type_="T-shirt", couleur="Noir")
+    await make_clothing_item(session, user_id=user_id, type_="Jean", couleur="Bleu")
+
+    resp = await client.get(f"/wardrobe/{user_id}/analytics", headers=headers)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 2
+    assert "colors" in body
+    assert "types" in body
+    assert "estimated_outfit_count" in body
+
+
+async def test_wardrobe_analytics_empty(client: AsyncClient, make_user, auth_headers):
+    created = await make_user(client, prenom="EmptyAnalytics")
+    user_id = created["user"]["id"]
+    headers = auth_headers(created["token"])
+
+    resp = await client.get(f"/wardrobe/{user_id}/analytics", headers=headers)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 0
+    assert body["estimated_outfit_count"] == 0
+
+
+async def test_wardrobe_analytics_access_denied(client: AsyncClient, make_user, auth_headers):
+    """User A cannot access User B's analytics."""
+    user_a = await make_user(client, prenom="UserA")
+    user_b = await make_user(client, prenom="UserB")
+    headers_a = auth_headers(user_a["token"])
+
+    resp = await client.get(f"/wardrobe/{user_b['user']['id']}/analytics", headers=headers_a)
+    assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Wardrobe score (AI)
+# ---------------------------------------------------------------------------
+async def test_wardrobe_score_too_few_items(client: AsyncClient, make_user, auth_headers, session, make_clothing_item):
+    created = await make_user(client, prenom="ScoreTest")
+    user_id = created["user"]["id"]
+    headers = auth_headers(created["token"])
+
+    # Only 2 items — need at least 3
+    await make_clothing_item(session, user_id=user_id, type_="T-shirt")
+    await make_clothing_item(session, user_id=user_id, type_="Jean")
+
+    resp = await client.get(f"/wardrobe/{user_id}/score", headers=headers)
+    assert resp.status_code == 422
+    assert "3" in resp.json()["detail"]
+
+
+MOCK_SCORE_RESULT = {
+    "score": 3.5,
+    "style_dna": "Urban Casual",
+    "resume": "Garde-robe équilibrée.",
+    "forces": ["Bonne palette de neutres"],
+    "axes_amelioration": ["Manque de pièces habillées"],
+    "capsule_manquante": [],
+    "top_combos": [],
+}
+
+
+@patch("app.services.ai_service.score_wardrobe", new_callable=AsyncMock, return_value=MOCK_SCORE_RESULT)
+async def test_wardrobe_score_success(mock_score, client: AsyncClient, make_user, auth_headers, session, make_clothing_item):
+    created = await make_user(client, prenom="ScoreOK")
+    user_id = created["user"]["id"]
+    headers = auth_headers(created["token"])
+
+    for type_ in ("T-shirt", "Jean", "Veste"):
+        await make_clothing_item(session, user_id=user_id, type_=type_)
+
+    resp = await client.get(f"/wardrobe/{user_id}/score", headers=headers)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["score"] == 3.5
+    assert body["style_dna"] == "Urban Casual"
+    mock_score.assert_called_once()
+
+
+async def test_wardrobe_score_access_denied(client: AsyncClient, make_user, auth_headers):
+    user_a = await make_user(client, prenom="ScoreA")
+    user_b = await make_user(client, prenom="ScoreB")
+    headers_a = auth_headers(user_a["token"])
+
+    resp = await client.get(f"/wardrobe/{user_b['user']['id']}/score", headers=headers_a)
+    assert resp.status_code == 403

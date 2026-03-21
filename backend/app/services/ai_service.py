@@ -397,7 +397,133 @@ REGLES STRICTES :
 
 
 # ---------------------------------------------------------------------------
-# 3. Chatbot styliste
+# 3. Wardrobe scoring — full wardrobe AI analysis
+# ---------------------------------------------------------------------------
+async def score_wardrobe(user_profile: dict, items: list[dict]) -> dict:
+    """
+    Analyse la garde-robe complète et retourne un bilan styliste.
+    items: list of {type, couleur, saison, style (from tags_ia)}
+    """
+    fallback = {
+        "score": None,
+        "style_dna": "Analyse impossible",
+        "forces": [],
+        "axes_amelioration": [],
+        "capsule_manquante": [],
+        "top_combos": [],
+    }
+
+    if not client:
+        logger.error("Gemini client not initialized (missing API key)")
+        return fallback
+
+    prenom = user_profile.get("prenom", "Utilisateur")
+    genre = user_profile.get("genre", "Homme")
+    morphologie = user_profile.get("morphologie", "RECTANGLE")
+    style_prefere = user_profile.get("style_prefere", "")
+
+    # Build wardrobe summary (max 40 items to keep prompt manageable)
+    item_lines = "\n".join(
+        f"- {i['type']} | {i.get('couleur', '?')} | {i.get('saison', '?')} | {i.get('style', '?')}"
+        for i in items[:40]
+    )
+
+    prompt = f"""Tu es un styliste expert qui analyse une garde-robe complete.
+
+PROFIL :
+- Prenom : {prenom}
+- Genre : {genre}
+- Morphologie : {morphologie}
+{f"- Style voulu : {style_prefere}" if style_prefere else ""}
+
+GARDE-ROBE ACTUELLE ({len(items)} pieces) :
+{item_lines}
+
+MISSION : Fais un bilan complet et actionnable de cette garde-robe.
+
+Reponds UNIQUEMENT avec un JSON valide :
+
+{{
+  "score": 3.8,
+  "style_dna": "2-3 mots qui definissent le style dominant (ex: Urban Casual Minimaliste)",
+  "resume": "1-2 phrases bienveillantes sur la garde-robe actuelle",
+  "forces": [
+    "Point fort concret (ex: Belle base de neutres qui se melangent bien)",
+    "Deuxieme force"
+  ],
+  "axes_amelioration": [
+    "Axe d'amelioration concret (ex: Manque de pieces structurees pour les occasions)",
+    "Deuxieme axe"
+  ],
+  "capsule_manquante": [
+    {{
+      "type": "Piece precise manquante (ex: Blazer oversize en lin)",
+      "pourquoi": "Raison concrete (ex: Permettrait de smartifier n'importe quel look en 30 secondes)",
+      "marque": "Marque accessible (ex: Zara)",
+      "prix_estime": "40-70 euros",
+      "recherche": "mots-cles e-shop"
+    }},
+    {{
+      "type": "Deuxieme piece manquante",
+      "pourquoi": "Raison",
+      "marque": "Marque",
+      "prix_estime": "fourchette",
+      "recherche": "mots-cles"
+    }},
+    {{
+      "type": "Troisieme piece manquante",
+      "pourquoi": "Raison",
+      "marque": "Marque",
+      "prix_estime": "fourchette",
+      "recherche": "mots-cles"
+    }}
+  ],
+  "top_combos": [
+    {{
+      "titre": "Nom du combo (ex: Look Bureau Decontracte)",
+      "pieces": ["Piece 1 de la garde-robe", "Piece 2", "Piece 3"],
+      "conseil": "1 phrase de styliste sur ce combo"
+    }},
+    {{
+      "titre": "Deuxieme combo",
+      "pieces": ["Piece A", "Piece B"],
+      "conseil": "Conseil"
+    }}
+  ]
+}}
+
+REGLES :
+- "score" : note sur 5 (ex: 3.8). Base-toi sur variete, coherence, polyvalence, adaptation a la morphologie.
+- "forces" : 2-3 points. Concrets, pas generiques.
+- "axes_amelioration" : 2-3 axes. Actionables.
+- "capsule_manquante" : 3 pieces qui transformeraient cette garde-robe. Prix realistes.
+- "top_combos" : 2 combos realises avec les pieces EXISTANTES dans la garde-robe.
+- Adapte tout au genre ({genre}) et a la morphologie ({morphologie}).
+- Sois bienveillant mais honnete. Ne surnom pas les notes.
+"""
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.5,
+                max_output_tokens=2048,
+            ),
+        )
+        raw = response.text
+        parsed = extract_json(raw)
+        if isinstance(parsed, dict):
+            logger.info("Wardrobe score for %s: %s/5", prenom, parsed.get("score"))
+            return parsed
+        return fallback
+    except Exception as e:
+        logger.error("Exception during wardrobe scoring: %s", e)
+        return fallback
+
+
+# ---------------------------------------------------------------------------
+# 4. Chatbot styliste
 # ---------------------------------------------------------------------------
 async def chat_with_stylist(user_profile: dict, message: str, history: list[dict] = None) -> dict:
     """Chat with the AI stylist. Returns a text response + optional product links."""

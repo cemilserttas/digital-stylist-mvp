@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
     User as UserIcon, Settings, History, Trash2, Save, ArrowLeft,
-    ChevronRight, ExternalLink, AlertTriangle, Check, X, Clock, Palette
+    ChevronRight, ExternalLink, AlertTriangle, Check, X, Clock, Palette, Gift, Copy, Share2
 } from 'lucide-react';
-import { updateUser, deleteUser, getClicks, clearClicks } from '@/lib/api';
+import { updateUser, deleteUser, getClicks, clearClicks, getReferralInfo } from '@/lib/api';
+import type { ReferralInfo } from '@/lib/types';
 import StylePreferences from '@/components/StylePreferences';
 
 const MORPHOLOGIES = [
@@ -23,6 +24,8 @@ interface UserData {
     genre: string;
     age: number;
     style_prefere?: string | null;
+    referral_code?: string | null;
+    referral_count?: number;
 }
 
 interface ClickRecord {
@@ -41,7 +44,7 @@ interface UserSettingsProps {
     onLogout: () => void;
 }
 
-type SettingsTab = 'profile' | 'style' | 'history' | 'danger';
+type SettingsTab = 'profile' | 'style' | 'history' | 'referral' | 'danger';
 
 export default function UserSettings({ user, onBack, onUserUpdated, onLogout }: UserSettingsProps) {
     const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
@@ -57,6 +60,11 @@ export default function UserSettings({ user, onBack, onUserUpdated, onLogout }: 
     // History state
     const [clicks, setClicks] = useState<ClickRecord[]>([]);
     const [loadingClicks, setLoadingClicks] = useState(false);
+
+    // Referral state
+    const [referralInfo, setReferralInfo] = useState<ReferralInfo | null>(null);
+    const [loadingReferral, setLoadingReferral] = useState(false);
+    const [codeCopied, setCodeCopied] = useState(false);
 
     // Danger state
     const [confirmDelete, setConfirmDelete] = useState(false);
@@ -74,9 +82,28 @@ export default function UserSettings({ user, onBack, onUserUpdated, onLogout }: 
         finally { setLoadingClicks(false); }
     }, [user.id]);
 
+    const fetchReferral = useCallback(async () => {
+        setLoadingReferral(true);
+        try {
+            const data = await getReferralInfo(user.id);
+            setReferralInfo(data);
+        } catch (err) { console.error(err); }
+        finally { setLoadingReferral(false); }
+    }, [user.id]);
+
     useEffect(() => {
         if (activeTab === 'history') fetchClicks();
-    }, [activeTab, fetchClicks]);
+        if (activeTab === 'referral') fetchReferral();
+    }, [activeTab, fetchClicks, fetchReferral]);
+
+    const handleCopyCode = async () => {
+        if (!referralInfo?.referral_code) return;
+        try {
+            await navigator.clipboard.writeText(referralInfo.referral_code);
+            setCodeCopied(true);
+            setTimeout(() => setCodeCopied(false), 2000);
+        } catch { /* ignore */ }
+    };
 
     const handleSaveProfile = async () => {
         setSaving(true);
@@ -127,6 +154,7 @@ export default function UserSettings({ user, onBack, onUserUpdated, onLogout }: 
         { key: 'profile' as SettingsTab, icon: UserIcon, label: 'Mon Profil', desc: 'Gérer mes informations' },
         { key: 'style' as SettingsTab, icon: Palette, label: 'Mon Style', desc: 'Préférences mode' },
         { key: 'history' as SettingsTab, icon: History, label: 'Historique', desc: 'Liens consultés' },
+        { key: 'referral' as SettingsTab, icon: Gift, label: 'Parrainage', desc: 'Inviter des amis' },
         { key: 'danger' as SettingsTab, icon: AlertTriangle, label: 'Zone danger', desc: 'Supprimer le compte' },
     ];
 
@@ -407,6 +435,105 @@ export default function UserSettings({ user, onBack, onUserUpdated, onLogout }: 
                                             <span className="text-gray-500">Total des produits consultés</span>
                                             <span className="font-bold text-white">{clicks.length} produit{clicks.length > 1 ? 's' : ''}</span>
                                         </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ===== REFERRAL TAB ===== */}
+                        {activeTab === 'referral' && (
+                            <div className="space-y-4">
+                                {loadingReferral ? (
+                                    <div className="text-center py-16">
+                                        <div className="w-6 h-6 border-2 border-purple-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                                        <p className="text-sm text-gray-500">Chargement...</p>
+                                    </div>
+                                ) : referralInfo ? (
+                                    <>
+                                        {/* Hero card */}
+                                        <div className="bg-linear-to-br from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-2xl p-6">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                                                    <Gift className="w-5 h-5 text-purple-400" />
+                                                </div>
+                                                <div>
+                                                    <h2 className="text-lg font-bold text-white">Programme de parrainage</h2>
+                                                    <p className="text-xs text-gray-400">{referralInfo.reward_description}</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Progress toward next reward */}
+                                            <div className="mb-4">
+                                                <div className="flex justify-between text-xs text-gray-400 mb-2">
+                                                    <span>{referralInfo.referral_count} ami{referralInfo.referral_count !== 1 ? 's' : ''} parrainé{referralInfo.referral_count !== 1 ? 's' : ''}</span>
+                                                    {referralInfo.referrals_until_next_reward > 0 ? (
+                                                        <span className="text-purple-400">encore {referralInfo.referrals_until_next_reward} pour 1 mois Premium</span>
+                                                    ) : (
+                                                        <span className="text-green-400">Récompense gagnée !</span>
+                                                    )}
+                                                </div>
+                                                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-linear-to-r from-purple-500 to-blue-500 rounded-full transition-all duration-500"
+                                                        style={{ width: `${Math.min(100, ((3 - referralInfo.referrals_until_next_reward) / 3) * 100)}%` }}
+                                                    />
+                                                </div>
+                                                <div className="flex justify-between text-[10px] text-gray-700 mt-1">
+                                                    <span>0</span><span>1</span><span>2</span><span>3</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Code card */}
+                                        <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                                            <h3 className="text-sm font-bold text-gray-400 mb-4">Ton code de parrainage</h3>
+                                            {referralInfo.referral_code ? (
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 font-mono text-lg font-bold text-white tracking-widest text-center">
+                                                        {referralInfo.referral_code}
+                                                    </div>
+                                                    <button
+                                                        onClick={handleCopyCode}
+                                                        className={`p-3 rounded-xl border transition-all shrink-0 ${codeCopied
+                                                            ? 'bg-green-500/20 border-green-500/40 text-green-400'
+                                                            : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'
+                                                        }`}
+                                                    >
+                                                        {codeCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm text-gray-500">Aucun code disponible</p>
+                                            )}
+                                            <p className="text-xs text-gray-600 mt-3">
+                                                Partage ce code avec tes amis. Ils l&apos;indiquent lors de leur inscription.
+                                            </p>
+                                        </div>
+
+                                        {/* Share button */}
+                                        {referralInfo.referral_code && (
+                                            <button
+                                                onClick={async () => {
+                                                    const text = `✨ Rejoins Digital Stylist — ton styliste IA personnel !\nUtilise mon code ${referralInfo.referral_code} lors de ton inscription pour qu'on profite tous les deux.\n🎁 3 parrainages = 1 mois Premium offert.`;
+                                                    if (typeof navigator !== 'undefined' && navigator.share) {
+                                                        await navigator.share({ title: 'Digital Stylist — Parrainage', text });
+                                                    } else {
+                                                        await navigator.clipboard.writeText(text);
+                                                        setCodeCopied(true);
+                                                        setTimeout(() => setCodeCopied(false), 2000);
+                                                    }
+                                                }}
+                                                className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2"
+                                            >
+                                                <Share2 className="w-4 h-4" />
+                                                Partager l&apos;invitation
+                                            </button>
+                                        )}
+                                    </>
+                                ) : (
+                                    <div className="text-center py-16 text-gray-500">
+                                        <Gift className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                                        <p>Impossible de charger les informations de parrainage.</p>
                                     </div>
                                 )}
                             </div>

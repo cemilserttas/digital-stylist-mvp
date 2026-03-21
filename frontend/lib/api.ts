@@ -32,13 +32,18 @@ api.interceptors.response.use(
     }
 );
 
-export const createUser = async (data: { prenom: string; morphologie: string; genre: string; age: number }) => {
+export const createUser = async (data: { prenom: string; morphologie: string; genre: string; age: number; password?: string; referral_code?: string }) => {
     const response = await api.post('/users/create', data);
     return response.data;
 };
 
-export const loginUser = async (prenom: string) => {
-    const response = await api.post('/users/login', { prenom });
+export const getReferralInfo = async (userId: number) => {
+    const response = await api.get(`/users/${userId}/referral`);
+    return response.data;
+};
+
+export const loginUser = async (prenom: string, password: string) => {
+    const response = await api.post('/users/login', { prenom, password });
     return response.data;
 };
 
@@ -150,6 +155,11 @@ export const deleteOutfitPlan = async (planId: number) => {
 
 export const getWardrobeAnalytics = async (userId: number) => {
     const response = await api.get(`/wardrobe/${userId}/analytics`);
+    return response.data;
+};
+
+export const getWardrobeScore = async (userId: number) => {
+    const response = await api.get(`/wardrobe/${userId}/score`);
     return response.data;
 };
 

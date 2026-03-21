@@ -8,9 +8,14 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:all": "vitest run && playwright test"
   },
   "dependencies": {
+    "@sentry/nextjs": "^9.0.0",
     "axios": "^1.13.5",
     "clsx": "^2.1.1",
     "framer-motion": "^12.34.3",
@@ -35,6 +40,7 @@
     "jsdom": "29.0.1",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "4.1.0"
+    "vitest": "4.1.0",
+    "@playwright/test": "^1.49.0"
   }
 }
