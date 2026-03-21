@@ -41,7 +41,7 @@ export default function PWAInstallPrompt() {
     };
     window.addEventListener('beforeinstallprompt', handler);
     return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
+  }, [isIOS, isStandalone]);
 
   const handleInstall = async () => {
     if (deferredPrompt) {
@@ -62,12 +62,12 @@ export default function PWAInstallPrompt() {
   if (isStandalone || !showBanner) return null;
 
   return (
-    <div className="fixed bottom-[5.5rem] left-4 right-4 z-50 pointer-events-none flex justify-center">
+    <div className="fixed bottom-22 left-4 right-4 z-50 pointer-events-none flex justify-center">
       <div
         className="pointer-events-auto flex items-center gap-3 bg-gray-900 border border-white/10 rounded-2xl px-4 py-3 shadow-2xl max-w-sm w-full"
         style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))' }}
       >
-        <div className="flex-shrink-0 w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center">
+        <div className="shrink-0 w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center">
           <Download className="w-5 h-5 text-white" />
         </div>
         <div className="flex-1 min-w-0">
