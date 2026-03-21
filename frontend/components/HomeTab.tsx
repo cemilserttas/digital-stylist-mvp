@@ -83,15 +83,16 @@ export default function HomeTab({
   user, weather, greeting, dateStr, suggestions, loadingSuggestions, suggestionLimitReached, onRefresh, onProductClick,
 }: HomeTabProps) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 pt-6">
       {/* Weather + Greeting Hero */}
-      <div className="bg-linear-to-br from-purple-600/20 to-blue-600/20 border border-white/10 rounded-3xl p-8 backdrop-blur relative overflow-hidden min-h-[180px]">
+      <div className="bg-linear-to-br from-purple-600/20 via-blue-600/10 to-transparent border border-white/8 rounded-3xl p-6 md:p-8 backdrop-blur relative overflow-hidden min-h-[180px]">
         {weather && <WeatherAnimation weatherCode={weather.icon} />}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl -mr-20 -mt-20" />
+        <div className="absolute top-0 right-0 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl -mr-24 -mt-24" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-500/5 rounded-full blur-2xl -ml-12 -mb-12" />
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex-1">
-            <p className="text-sm text-gray-400 capitalize mb-1">{dateStr}</p>
-            <h2 className="text-2xl md:text-3xl font-black text-white mb-3">
+            <p className="text-xs text-gray-500 mb-1.5 tracking-widest uppercase">{dateStr}</p>
+            <h2 className="text-2xl md:text-3xl font-black text-white mb-3 leading-tight">
               {greeting || `Bonjour ${user.prenom} 👋`}
             </h2>
           </div>

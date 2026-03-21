@@ -80,9 +80,12 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
     };
 
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-linear-to-br from-gray-950 via-gray-900 to-black p-4">
-            {/* Background pattern */}
-            <div className="fixed inset-0 opacity-5" style={{
+        <div className="min-h-screen w-full flex items-center justify-center bg-gray-950 p-4" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))', paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}>
+            {/* Decorative orbs */}
+            <div className="fixed top-0 left-1/3 w-80 h-80 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
+            <div className="fixed bottom-0 right-1/3 w-72 h-72 bg-pink-600/10 rounded-full blur-3xl pointer-events-none" />
+            {/* Background grid */}
+            <div className="fixed inset-0 opacity-[0.03]" style={{
                 backgroundImage: 'radial-gradient(circle at 25% 25%, white 1px, transparent 1px)',
                 backgroundSize: '50px 50px',
             }} />
@@ -93,7 +96,7 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                     <div className="inline-flex items-center gap-2 mb-3">
                         <Sparkles className="w-6 h-6 text-purple-400" />
                         <h1 className="text-4xl font-black tracking-tight text-white">
-                            DIGITAL<span className="text-purple-400">STYLIST</span>
+                            DIGITAL<span className="bg-linear-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">STYLIST</span>
                         </h1>
                     </div>
                     <p className="text-gray-400 text-sm">Votre styliste personnel propulsé par l&apos;intelligence artificielle</p>

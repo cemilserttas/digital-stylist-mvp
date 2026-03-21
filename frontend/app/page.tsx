@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Clock, MapPin, Settings, Sparkles, Crown } from 'lucide-react';
+import { Clock, MapPin, Settings, Sparkles, Crown, LogOut } from 'lucide-react';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { useWeather } from '@/hooks/useWeather';
 import UserForm from '@/components/UserForm';
@@ -196,12 +196,12 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gray-950 font-sans text-white" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
-      <header className="sticky top-0 z-30 bg-gray-950/80 backdrop-blur-xl border-b border-white/5">
+      <header className="sticky top-0 z-30 bg-gray-950/90 backdrop-blur-xl border-b border-white/5" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-purple-400" />
             <h1 className="text-lg font-black tracking-tight">
-              DIGITAL<span className="text-purple-400">STYLIST</span>
+              DIGITAL<span className="bg-linear-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">STYLIST</span>
             </h1>
           </div>
           <div className="flex items-center gap-3">
@@ -239,8 +239,8 @@ export default function Home() {
             <button onClick={() => setShowSettings(true)} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors" title="Paramètres">
               <Settings className="w-4 h-4 text-gray-400" />
             </button>
-            <button onClick={handleLogout} className="text-xs text-gray-500 hover:text-red-400 transition-colors" title="Déconnexion">
-              Déco
+            <button onClick={handleLogout} className="p-2 rounded-xl bg-white/5 hover:bg-red-500/10 transition-colors group" title="Déconnexion">
+              <LogOut className="w-4 h-4 text-gray-500 group-hover:text-red-400 transition-colors" />
             </button>
           </div>
         </div>
