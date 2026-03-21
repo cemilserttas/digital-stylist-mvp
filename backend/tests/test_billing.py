@@ -315,6 +315,8 @@ async def test_webhook_subscription_updated_extends_premium(
 
     assert resp.status_code == 200
 
+    # Expire the session cache so we read the updated value from DB
+    session.expire_all()
     user = await session.get(User, user_id)
     assert user.is_premium is True
     if user.premium_until:
