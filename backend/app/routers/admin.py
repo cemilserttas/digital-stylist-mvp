@@ -10,6 +10,7 @@ load_dotenv()
 
 from app.database import get_session
 from app.models import User, ClothingItem, LinkClick
+from app.services import storage_service
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,8 @@ async def list_all_users(
             "style_prefere": user.style_prefere,
             "created_at": str(user.created_at),
             "clothing_count": clothing_count,
+            "is_premium": user.is_premium,
+            "premium_until": str(user.premium_until) if user.premium_until else None,
         }
         for user, clothing_count in rows
     ]
@@ -72,15 +75,12 @@ async def delete_user_cascade(
     )
     items = items_result.scalars().all()
     
-    # Delete image files from disk
+    # Delete image files (local disk or CDN)
     deleted_files = 0
     for item in items:
-        if item.image_path and os.path.exists(item.image_path):
-            try:
-                os.remove(item.image_path)
-                deleted_files += 1
-            except Exception as e:
-                logger.warning("Could not delete file %s: %s", item.image_path, e)
+        if item.image_path:
+            await storage_service.delete_image(item.image_path)
+            deleted_files += 1
         # Delete item from DB
         await session.delete(item)
     

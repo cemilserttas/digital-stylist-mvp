@@ -68,3 +68,38 @@ Score avant : 15/17 → Score après : 17/17
 - [2026-03-21] Claude : boto3==1.38.0 ajouté dans requirements.txt ✅
 - [2026-03-21] Claude : tests/test_freemium.py — 10 tests gate freemium (suggestions + chat, limites, reset, premium bypass) ✅
 - [2026-03-21] Claude : Frontend UX freemium — SuggestionsSection banner amber quand limitReached, ChatBot message inline 🔒 sur 429, page.tsx détecte 429 → setSuggestionLimitReached ✅
+- [2026-03-21] Claude : getImageUrl fix — passe-à-travers si l'URL est déjà https:// (CDN) ✅
+- [2026-03-21] Claude : admin.py cascade delete → storage_service.delete_image() (CDN-aware) ✅
+- [2026-03-21] Claude : Push notifications (USP) — infrastructure complète :
+  - models.py : fcm_token, push_notifications_enabled, push_city ✅
+  - Alembic g8h9i0j1k2l3 : 3 nouvelles colonnes ✅
+  - services/push_service.py : Firebase Admin SDK wrapper (graceful no-op sans creds) ✅
+  - services/weather_cron.py : APScheduler cron 07h30 — météo Open-Meteo + Gemini + FCM ✅
+  - routers/push.py : PUT/DELETE /push/{user_id}/token ✅
+  - main.py : lifespan start/stop scheduler, include push router ✅
+  - apscheduler==3.10.4 + firebase-admin==6.7.0 dans requirements.txt ✅
+  - lib/firebase.ts : Firebase JS SDK init + requestPushToken() ✅
+  - lib/api.ts : registerFcmToken + unregisterFcmToken ✅
+  - components/PushNotificationSetup.tsx : bouton Activer/Désactiver notifs ✅
+  - public/sw.js : push + notificationclick event handlers ✅
+  - UserSettings.tsx : section Notifications avec PushNotificationSetup ✅
+  - types.ts : push_notifications_enabled dans User ✅
+  - .env.example (backend + frontend) : Firebase + APScheduler vars documentées ✅
+  - firebase==^11.0.0 dans package.json ✅
+- [2026-03-21] Claude : UserRead.push_notifications_enabled exposé dans l'API ✅
+- [2026-03-21] Claude : useWeather.ts persist city → localStorage (stylist_weather) pour cron ✅
+- [2026-03-21] Claude : firebase-messaging-sw.js (background FCM, importScripts compat) ✅
+- [2026-03-21] Claude : firebase.ts envoie FIREBASE_CONFIG postMessage au SW via sw.register ✅
+- [2026-03-21] Claude : UserData interface (UserSettings) += push_notifications_enabled ✅
+- [2026-03-21] Claude : Partage Story Instagram — lib/shareCard.ts (Canvas 2D 1080×1920, aucune dépendance) ✅
+- [2026-03-21] Claude : SuggestionsSection — bouton 📷 image-share à côté du texte-share ✅
+- [2026-03-21] Claude : Stripe billing — infrastructure complète :
+  - routers/billing.py : POST /billing/{user_id}/checkout + POST /billing/webhook ✅
+  - Webhook handlers : checkout.completed → grant_premium, subscription.deleted, payment_failed ✅
+  - stripe==11.4.1 dans requirements.txt ✅
+  - backend/.env.example : STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_MONTHLY/YEARLY ✅
+  - main.py : billing router inclus ✅
+  - GET /users/{user_id} endpoint (refresh après paiement) ✅
+  - lib/api.ts : createCheckoutSession + getUser ✅
+  - components/UpgradeModal.tsx : modal plan monthly/yearly, feature list, CTA Stripe ✅
+  - page.tsx : bouton Crown header (free users), modal auto sur 429, useEffect ?payment=success → refresh user ✅

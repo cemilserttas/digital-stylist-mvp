@@ -45,6 +45,10 @@ class User(UserBase, table=True):
     suggestions_count_today: int = Field(default=0)
     chat_date: Optional[date] = Field(default=None)
     chat_count_today: int = Field(default=0)
+    # Push notifications
+    fcm_token: Optional[str] = Field(default=None, index=True)
+    push_notifications_enabled: bool = Field(default=False)
+    push_city: Optional[str] = Field(default=None)
     clothing_items: List["ClothingItem"] = Relationship(back_populates="user")
     link_clicks: List["LinkClick"] = Relationship(back_populates="user")
     outfit_plans: List["OutfitPlan"] = Relationship(back_populates="user")
@@ -59,6 +63,7 @@ class UserRead(UserBase):
     premium_until: Optional[datetime] = None
     referral_code: Optional[str] = None
     referral_count: int = 0
+    push_notifications_enabled: bool = False
 
 # Shared properties
 class ClothingItemBase(SQLModel):

@@ -28,9 +28,12 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.database import init_db, get_session
 from app.models import User
-from app.routers import wardrobe, users, admin, outfit_calendar
+from app.routers import wardrobe, users, admin, outfit_calendar, push, billing
+from app.services.weather_cron import start_scheduler, stop_scheduler
 from app.services.ai_service import get_daily_suggestions, chat_with_stylist
 from app.auth import get_current_user
 
@@ -77,8 +80,10 @@ async def lifespan(_app: FastAPI):
     elif len(admin_key) < 16:
         raise RuntimeError("ADMIN_KEY trop courte (minimum 16 caractères)")
     await init_db()
+    start_scheduler(_app)
     logger.info("Digital Stylist API démarrée")
     yield
+    stop_scheduler(_app)
 
 app = FastAPI(title="Digital Stylist API", lifespan=lifespan)
 app.state.limiter = limiter
@@ -130,6 +135,8 @@ app.include_router(wardrobe.router)
 app.include_router(users.router)
 app.include_router(admin.router)
 app.include_router(outfit_calendar.router)
+app.include_router(push.router)
+app.include_router(billing.router)
 
 @app.get("/")
 def read_root():

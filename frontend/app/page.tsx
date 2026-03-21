@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Clock, MapPin, Settings, Sparkles } from 'lucide-react';
+import { Clock, MapPin, Settings, Sparkles, Crown } from 'lucide-react';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { useWeather } from '@/hooks/useWeather';
 import UserForm from '@/components/UserForm';
@@ -14,7 +14,8 @@ import OutfitCalendar from '@/components/OutfitCalendar';
 import HomeTab from '@/components/HomeTab';
 import WardrobeTab from '@/components/WardrobeTab';
 import BottomNav from '@/components/BottomNav';
-import { getWardrobe, getDailySuggestions, saveClick, updateUser } from '@/lib/api';
+import UpgradeModal from '@/components/UpgradeModal';
+import { getWardrobe, getDailySuggestions, saveClick, updateUser, getUser } from '@/lib/api';
 import type { User, ClothingItem, Suggestion, SuggestionPiece, TabType } from '@/lib/types';
 import { buildShopUrl } from '@/lib/utils';
 
@@ -44,6 +45,7 @@ export default function Home() {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
   const [suggestionLimitReached, setSuggestionLimitReached] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -53,6 +55,22 @@ export default function Home() {
   useEffect(() => {
     const stored = localStorage.getItem('stylist_user');
     if (stored) setUser(JSON.parse(stored));
+  }, []);
+
+  // Refresh user after Stripe redirect (premium status may have changed)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      // Remove query param without reload
+      window.history.replaceState({}, '', window.location.pathname);
+      const stored = localStorage.getItem('stylist_user');
+      if (!stored) return;
+      const storedUser = JSON.parse(stored) as User;
+      getUser(storedUser.id).then((fresh: User) => {
+        setUser(fresh);
+        localStorage.setItem('stylist_user', JSON.stringify(fresh));
+      }).catch(console.error);
+    }
   }, []);
 
   const fetchWardrobe = useCallback(async () => {
@@ -88,6 +106,7 @@ export default function Home() {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 429) {
         setSuggestionLimitReached(true);
+        if (!user?.is_premium) setShowUpgradeModal(true);
       } else {
         console.error(err);
       }
@@ -200,6 +219,16 @@ export default function Home() {
               </div>
             </div>
             <p className="text-sm font-bold text-white hidden sm:block">{user.prenom}</p>
+            {!user.is_premium && (
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="flex items-center gap-1.5 text-xs font-bold bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-400 px-3 py-1.5 rounded-full transition-colors"
+                title="Passer à Premium"
+              >
+                <Crown className="w-3.5 h-3.5" />
+                Premium
+              </button>
+            )}
             <button onClick={() => setShowSettings(true)} className="p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors" title="Paramètres">
               <Settings className="w-4 h-4 text-gray-400" />
             </button>
@@ -261,6 +290,14 @@ export default function Home() {
           <ChatBot userId={user.id} userName={user.prenom} />
         </ErrorBoundary>
       </div>
+
+      {showUpgradeModal && (
+        <UpgradeModal
+          user={user}
+          onClose={() => setShowUpgradeModal(false)}
+          defaultPlan="monthly"
+        />
+      )}
     </main>
   );
 }

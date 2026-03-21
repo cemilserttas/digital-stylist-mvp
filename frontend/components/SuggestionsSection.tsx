@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, Sparkles, ShoppingBag, Share2, Check, Crown, Lock } from 'lucide-react';
+import { Loader2, Sparkles, ShoppingBag, Share2, Check, Crown, Lock, Image } from 'lucide-react';
 import type { Suggestion, SuggestionPiece } from '@/lib/types';
 import { buildShopUrl } from '@/lib/utils';
+import { shareLookCard } from '@/lib/shareCard';
 
 async function shareSuggestion(sug: Suggestion) {
   const total = (sug.pieces || []).reduce((sum, p) => {
@@ -43,6 +44,7 @@ export default function SuggestionsSection({
     limitReached = false,
 }: SuggestionsSectionProps) {
     const [sharedIdx, setSharedIdx] = useState<number | null>(null);
+    const [cardGeneratingIdx, setCardGeneratingIdx] = useState<number | null>(null);
 
     const handleShare = async (sug: Suggestion, idx: number) => {
         try {
@@ -50,6 +52,14 @@ export default function SuggestionsSection({
             setSharedIdx(idx);
             setTimeout(() => setSharedIdx(null), 2000);
         } catch { /* user cancelled share or clipboard denied */ }
+    };
+
+    const handleShareCard = async (sug: Suggestion, idx: number) => {
+        setCardGeneratingIdx(idx);
+        try {
+            await shareLookCard(sug);
+        } catch { /* user cancelled or Canvas unavailable */ }
+        finally { setCardGeneratingIdx(null); }
     };
 
     return (
@@ -155,14 +165,27 @@ export default function SuggestionsSection({
                                         return sum + n;
                                     }, 0);
                                     const shared = sharedIdx === idx;
+                                    const generatingCard = cardGeneratingIdx === idx;
                                     return (
                                         <div className="flex items-center justify-between pt-3 border-t border-white/5">
                                             <span className="text-xs text-gray-500">Total du look</span>
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-2">
                                                 <span className="text-lg font-black text-white">{total.toFixed(2)}€</span>
+                                                {/* Image card share */}
+                                                <button
+                                                    onClick={() => handleShareCard(sug, idx)}
+                                                    disabled={generatingCard}
+                                                    title="Partager en image Story"
+                                                    className="p-1.5 rounded-lg transition-all bg-white/5 text-gray-400 hover:bg-purple-500/20 hover:text-purple-300 disabled:opacity-50"
+                                                >
+                                                    {generatingCard
+                                                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                        : <Image className="w-3.5 h-3.5" />}
+                                                </button>
+                                                {/* Text share */}
                                                 <button
                                                     onClick={() => handleShare(sug, idx)}
-                                                    title={shared ? 'Copié !' : 'Partager ce look'}
+                                                    title={shared ? 'Copié !' : 'Partager (texte)'}
                                                     className={`p-1.5 rounded-lg transition-all ${shared ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'}`}
                                                 >
                                                     {shared ? <Check className="w-3.5 h-3.5" /> : <Share2 className="w-3.5 h-3.5" />}

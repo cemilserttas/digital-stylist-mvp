@@ -89,7 +89,7 @@ export function useWeather(): WeatherData | null {
                     };
                 });
 
-                setWeather({
+                const weatherData: WeatherData = {
                     temperature: Math.round(cur.temperature_2m),
                     description,
                     ville,
@@ -99,7 +99,10 @@ export function useWeather(): WeatherData | null {
                     uv_index: uvIndex,
                     comfort_index: comfortIndex,
                     forecast,
-                });
+                };
+                // Persist city for push notification cron (PushNotificationSetup reads stylist_weather)
+                try { localStorage.setItem('stylist_weather', JSON.stringify({ ville })); } catch { /* ignore */ }
+                setWeather(weatherData);
             } catch (err) {
                 console.error('Weather fetch failed:', err);
                 setWeather({ temperature: 15, description: 'Indisponible', ville: 'Paris', icon: 'cloud' });

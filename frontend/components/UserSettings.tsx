@@ -6,8 +6,9 @@ import {
     ChevronRight, ExternalLink, AlertTriangle, Check, X, Clock, Palette, Gift, Copy, Share2
 } from 'lucide-react';
 import { updateUser, deleteUser, getClicks, clearClicks, getReferralInfo } from '@/lib/api';
-import type { ReferralInfo } from '@/lib/types';
+import type { ReferralInfo, User } from '@/lib/types';
 import StylePreferences from '@/components/StylePreferences';
+import PushNotificationSetup from '@/components/PushNotificationSetup';
 
 const MORPHOLOGIES = [
     { value: 'TRIANGLE', label: 'Triangle', icon: '🔺' },
@@ -26,6 +27,7 @@ interface UserData {
     style_prefere?: string | null;
     referral_code?: string | null;
     referral_count?: number;
+    push_notifications_enabled?: boolean;
 }
 
 interface ClickRecord {
@@ -316,6 +318,15 @@ export default function UserSettings({ user, onBack, onUserUpdated, onLogout }: 
                                             <><Save className="w-4 h-4" /> Enregistrer les modifications</>
                                         )}
                                     </button>
+                                </div>
+
+                                {/* Push notifications */}
+                                <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                                    <h3 className="text-sm font-bold text-gray-400 mb-4">Notifications</h3>
+                                    <PushNotificationSetup
+                                        user={user as unknown as User}
+                                        onUserUpdate={(updated) => onUserUpdated({ ...user, ...updated } as UserData)}
+                                    />
                                 </div>
 
                                 {/* Account info */}

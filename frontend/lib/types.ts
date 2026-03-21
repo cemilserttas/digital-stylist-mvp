@@ -12,6 +12,7 @@ export interface User {
   premium_until?: string | null;
   referral_code?: string | null;
   referral_count?: number;
+  push_notifications_enabled?: boolean;
 }
 
 export interface ReferralInfo {

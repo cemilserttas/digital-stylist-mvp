@@ -81,3 +81,52 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(request).then((cached) => cached ?? caches.match('/')))
   );
 });
+
+// ──────────────────────────────────────────────────────────
+// Push — show notification when app is in background
+// ──────────────────────────────────────────────────────────
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  let payload;
+  try {
+    payload = event.data.json();
+  } catch {
+    payload = { title: 'Digital Stylist', body: event.data.text() };
+  }
+
+  const title = payload.title || 'Digital Stylist';
+  const options = {
+    body: payload.body || 'Ton look du jour est prêt !',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    vibrate: [200, 100, 200],
+    data: payload.data || {},
+    actions: [
+      { action: 'open', title: 'Voir mon look' },
+      { action: 'dismiss', title: 'Plus tard' },
+    ],
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// ──────────────────────────────────────────────────────────
+// Notification click — open or focus the app
+// ──────────────────────────────────────────────────────────
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  if (event.action === 'dismiss') return;
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      return clients.openWindow('/');
+    })
+  );
+});

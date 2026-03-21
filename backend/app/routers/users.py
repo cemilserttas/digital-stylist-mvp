@@ -129,6 +129,21 @@ async def login_user(
     return {"user": UserRead.model_validate(user).model_dump(), "token": token}
 
 
+@router.get("/{user_id}", response_model=UserRead)
+async def get_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Fetch current user data — useful after Stripe payment to refresh premium status."""
+    if current_user.id != user_id:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    return UserRead.model_validate(user)
+
+
 @router.get("/{user_id}/referral")
 async def get_referral_info(
     user_id: int,

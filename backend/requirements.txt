@@ -1,6 +1,9 @@
 aiosqlite==0.22.1
+apscheduler==3.10.4
 asyncpg==0.30.0
+stripe==11.4.1
 boto3==1.38.0
+firebase-admin==6.7.0
 alembic==1.18.4
 annotated-doc==0.0.4
 annotated-types==0.7.0
