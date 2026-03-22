@@ -3,15 +3,21 @@ AI service — chat with the stylist.
 Conversational AI stylist with product recommendations.
 """
 import logging
+from typing import Optional
 
 from google.genai import types
 
-from app.services.ai_base import client, extract_json
+from app.services.ai_base import client, extract_json, tracked_generate
 
 logger = logging.getLogger(__name__)
 
 
-async def chat_with_stylist(user_profile: dict, message: str, history: list[dict] = None) -> dict:
+async def chat_with_stylist(
+    user_profile: dict,
+    message: str,
+    history: list[dict] = None,
+    user_id: Optional[int] = None,
+) -> dict:
     """Chat with the AI stylist. Returns a text response + optional product links."""
     if not client:
         logger.error("Gemini client not initialized (missing API key)")
@@ -70,14 +76,15 @@ REGLES :
 """
 
     try:
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
+        response = tracked_generate(
+            request_type="chat",
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.8,
                 max_output_tokens=2048,
                 http_options=types.HttpOptions(timeout=30000),
             ),
+            user_id=user_id,
         )
         parsed = extract_json(response.text)
         if isinstance(parsed, dict):

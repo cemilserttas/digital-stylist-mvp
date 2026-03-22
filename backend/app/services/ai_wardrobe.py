@@ -3,10 +3,11 @@ AI service — wardrobe scoring.
 Analyses the full wardrobe and returns a stylist report with score, strengths, gaps, and top combos.
 """
 import logging
+from typing import Optional
 
 from google.genai import types
 
-from app.services.ai_base import client, extract_json
+from app.services.ai_base import client, extract_json, tracked_generate
 
 logger = logging.getLogger(__name__)
 
@@ -20,11 +21,11 @@ _FALLBACK = {
 }
 
 
-async def score_wardrobe(user_profile: dict, items: list[dict]) -> dict:
-    """
-    Analyse la garde-robe complète et retourne un bilan styliste.
-    items: list of {type, couleur, saison, style (from tags_ia)}
-    """
+async def score_wardrobe(
+    user_profile: dict,
+    items: list[dict],
+    user_id: Optional[int] = None,
+) -> dict:
     if not client:
         logger.error("Gemini client not initialized (missing API key)")
         return _FALLBACK
@@ -58,22 +59,10 @@ Reponds UNIQUEMENT avec un JSON valide :
   "score": 3.8,
   "style_dna": "2-3 mots qui definissent le style dominant (ex: Urban Casual Minimaliste)",
   "resume": "1-2 phrases bienveillantes sur la garde-robe actuelle",
-  "forces": [
-    "Point fort concret",
-    "Deuxieme force"
-  ],
-  "axes_amelioration": [
-    "Axe d'amelioration concret",
-    "Deuxieme axe"
-  ],
+  "forces": ["Point fort concret", "Deuxieme force"],
+  "axes_amelioration": ["Axe d'amelioration concret", "Deuxieme axe"],
   "capsule_manquante": [
-    {{
-      "type": "Piece precise manquante",
-      "pourquoi": "Raison concrete",
-      "marque": "Marque accessible",
-      "prix_estime": "40-70 euros",
-      "recherche": "mots-cles e-shop"
-    }},
+    {{"type": "Piece precise manquante", "pourquoi": "Raison concrete", "marque": "Marque accessible", "prix_estime": "40-70 euros", "recherche": "mots-cles e-shop"}},
     {{"type": "Deuxieme piece", "pourquoi": "Raison", "marque": "Marque", "prix_estime": "fourchette", "recherche": "mots-cles"}},
     {{"type": "Troisieme piece", "pourquoi": "Raison", "marque": "Marque", "prix_estime": "fourchette", "recherche": "mots-cles"}}
   ],
@@ -94,14 +83,15 @@ REGLES :
 """
 
     try:
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
+        response = tracked_generate(
+            request_type="score",
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.5,
                 max_output_tokens=2048,
                 http_options=types.HttpOptions(timeout=30000),
             ),
+            user_id=user_id,
         )
         parsed = extract_json(response.text)
         if isinstance(parsed, dict):

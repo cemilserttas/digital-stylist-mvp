@@ -144,3 +144,27 @@ class OutfitPlanCreate(SQLModel):
 
 class OutfitPlanRead(OutfitPlanBase):
     id: int
+
+
+# ---------------------------------------------------------------------------
+# AI Request Tracking — every Gemini call is logged
+# ---------------------------------------------------------------------------
+class AIRequestType(str, Enum):
+    ANALYZE = "analyze"
+    SUGGEST = "suggest"
+    CHAT = "chat"
+    SCORE = "score"
+    PUSH_CRON = "push_cron"
+
+
+class AIRequest(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id", index=True)
+    request_type: str = Field(index=True)       # AIRequestType value
+    model: str = Field(default="gemini-2.0-flash", index=True)
+    input_tokens: int = Field(default=0)
+    output_tokens: int = Field(default=0)
+    duration_ms: int = Field(default=0)
+    status: str = Field(default="success")       # "success" | "error" | "blocked"
+    error_message: Optional[str] = Field(default=None)
+    created_at: datetime = Field(default_factory=_utcnow, index=True)

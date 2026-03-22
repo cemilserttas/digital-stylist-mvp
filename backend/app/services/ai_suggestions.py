@@ -3,15 +3,20 @@ AI service — daily outfit suggestions.
 Generates 3 personalized looks based on user profile + current weather.
 """
 import logging
+from typing import Optional
 
 from google.genai import types
 
-from app.services.ai_base import client, extract_json
+from app.services.ai_base import client, extract_json, tracked_generate
 
 logger = logging.getLogger(__name__)
 
 
-async def get_daily_suggestions(user_profile: dict, weather_data: dict) -> dict:
+async def get_daily_suggestions(
+    user_profile: dict,
+    weather_data: dict,
+    user_id: Optional[int] = None,
+) -> dict:
     """Generate personalized style suggestions based on profile + weather."""
     if not client:
         logger.error("Gemini client not initialized (missing API key)")
@@ -95,14 +100,15 @@ REGLES STRICTES :
 """
 
     try:
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
+        response = tracked_generate(
+            request_type="suggest",
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.7,
                 max_output_tokens=4096,
                 http_options=types.HttpOptions(timeout=30000),
             ),
+            user_id=user_id,
         )
         parsed = extract_json(response.text)
         if isinstance(parsed, dict):

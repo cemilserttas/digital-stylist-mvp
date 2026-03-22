@@ -36,6 +36,8 @@ from app.routers import wardrobe, users, admin, outfit_calendar, push, billing
 from app.routers.users import update_streak
 from app.services.weather_cron import start_scheduler, stop_scheduler
 from app.services.ai_service import get_daily_suggestions, chat_with_stylist
+from app.services.ai_base import drain_pending_requests
+from app.models import AIRequest
 from app.auth import get_current_user
 
 limiter = Limiter(key_func=get_remote_address)
@@ -173,7 +175,7 @@ async def daily_suggestions(
         "age": current_user.age,
         "morphologie": current_user.morphologie,
     }
-    result = await get_daily_suggestions(profile, weather_data.model_dump())
+    result = await get_daily_suggestions(profile, weather_data.model_dump(), user_id=user_id)
 
     # Increment counter + streak after successful generation
     current_user.suggestions_count_today = (
@@ -182,6 +184,11 @@ async def daily_suggestions(
     current_user.suggestions_date = today
     update_streak(current_user)
     session.add(current_user)
+
+    # Flush AI request logs to DB
+    for entry in drain_pending_requests():
+        session.add(AIRequest(**entry))
+
     await session.commit()
 
     return result
@@ -213,7 +220,7 @@ async def chat_endpoint(
         "age": current_user.age,
         "morphologie": current_user.morphologie,
     }
-    result = await chat_with_stylist(profile, body.message, body.history)
+    result = await chat_with_stylist(profile, body.message, body.history, user_id=user_id)
 
     current_user.chat_count_today = (
         (current_user.chat_count_today + 1) if current_user.chat_date == today else 1
@@ -221,6 +228,11 @@ async def chat_endpoint(
     current_user.chat_date = today
     update_streak(current_user)
     session.add(current_user)
+
+    # Flush AI request logs to DB
+    for entry in drain_pending_requests():
+        session.add(AIRequest(**entry))
+
     await session.commit()
 
     return result

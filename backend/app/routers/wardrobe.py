@@ -8,9 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select, func
 
 from app.database import get_session
-from app.models import ClothingItem, User, ClothingItemRead
+from app.models import ClothingItem, User, ClothingItemRead, AIRequest
 from app.services import ai_service
 from app.services import storage_service
+from app.services.ai_base import drain_pending_requests
 from app.auth import get_current_user
 
 try:
@@ -92,7 +93,7 @@ async def upload_clothing_item(
         raise HTTPException(status_code=500, detail="Impossible de sauvegarder le fichier")
 
     # Send original (non-removed) content to Gemini — richer color/detail for analysis
-    analysis = await ai_service.analyze_clothing_image(content, mime_type=file.content_type or "image/jpeg")
+    analysis = await ai_service.analyze_clothing_image(content, mime_type=file.content_type or "image/jpeg", user_id=user_id)
 
     # Create DB Entry
     new_item = ClothingItem(
@@ -106,6 +107,11 @@ async def upload_clothing_item(
     )
     
     session.add(new_item)
+
+    # Flush AI request logs to DB
+    for entry in drain_pending_requests():
+        session.add(AIRequest(**entry))
+
     await session.commit()
     await session.refresh(new_item)
     logger.info("User %d uploaded item '%s' in '%s'", user_id, new_item.type, category)
@@ -324,4 +330,11 @@ async def get_wardrobe_score(
         "style_prefere": current_user.style_prefere or "",
     }
 
-    return await ai_service.score_wardrobe(user_profile, item_dicts)
+    result = await ai_service.score_wardrobe(user_profile, item_dicts, user_id=user_id)
+
+    # Flush AI request logs to DB
+    for entry in drain_pending_requests():
+        session.add(AIRequest(**entry))
+    await session.commit()
+
+    return result

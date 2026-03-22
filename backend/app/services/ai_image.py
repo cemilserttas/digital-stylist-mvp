@@ -4,10 +4,11 @@ Detects all visible clothing items and evaluates the overall look.
 """
 import json
 import logging
+from typing import Optional
 
 from google.genai import types
 
-from app.services.ai_base import client, extract_json
+from app.services.ai_base import client, extract_json, tracked_generate
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,11 @@ _FALLBACK_EVALUATION = {
 # ---------------------------------------------------------------------------
 # Public function
 # ---------------------------------------------------------------------------
-async def analyze_clothing_image(image_bytes: bytes, mime_type: str = "image/jpeg") -> dict:
+async def analyze_clothing_image(
+    image_bytes: bytes,
+    mime_type: str = "image/jpeg",
+    user_id: Optional[int] = None,
+) -> dict:
     """
     Detects ALL clothing items + evaluates the overall look.
     Returns a dict for the PRIMARY item, with all data in tags_ia JSON.
@@ -118,14 +123,15 @@ async def analyze_clothing_image(image_bytes: bytes, mime_type: str = "image/jpe
 
     try:
         logger.info("Sending image to Gemini for analysis")
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
+        response = tracked_generate(
+            request_type="analyze",
             contents=[_ANALYZE_PROMPT, image_part],
             config=types.GenerateContentConfig(
                 temperature=0.3,
                 max_output_tokens=8192,
                 http_options=types.HttpOptions(timeout=45000),
             ),
+            user_id=user_id,
         )
 
         try:
