@@ -15,9 +15,11 @@ import HomeTab from '@/components/HomeTab';
 import WardrobeTab from '@/components/WardrobeTab';
 import BottomNav from '@/components/BottomNav';
 import UpgradeModal from '@/components/UpgradeModal';
+import StreakBadge from '@/components/StreakBadge';
 import { getWardrobe, getDailySuggestions, saveClick, updateUser, getUser } from '@/lib/api';
 import type { User, ClothingItem, Suggestion, SuggestionPiece, TabType } from '@/lib/types';
 import { buildShopUrl } from '@/lib/utils';
+import { identifyUser, track, resetAnalytics } from '@/lib/analytics';
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null);
@@ -102,10 +104,12 @@ export default function Home() {
       setGreeting(newGreeting);
       localStorage.setItem('stylist_suggestions', JSON.stringify(newSuggestions));
       localStorage.setItem('stylist_greeting', newGreeting);
+      track('suggestion_viewed', { count: newSuggestions.length, ville: weather?.ville, temp: weather?.temperature });
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 429) {
         setSuggestionLimitReached(true);
+        track('paywall_seen', { trigger: 'suggestion_limit', is_premium: user?.is_premium ?? false });
         if (!user?.is_premium) setShowUpgradeModal(true);
       } else {
         console.error(err);
@@ -131,6 +135,14 @@ export default function Home() {
 
   const handleUserCreated = (newUser: User) => {
     setUser(newUser);
+    identifyUser(newUser.id, {
+      prenom: newUser.prenom,
+      genre: newUser.genre,
+      morphologie: newUser.morphologie,
+      is_premium: newUser.is_premium ?? false,
+      has_referral: !!newUser.referral_code,
+    });
+    track('user_signed_up', { genre: newUser.genre, morphologie: newUser.morphologie });
     if (!newUser.style_prefere) setShowStylePrefs(true);
   };
 
@@ -148,6 +160,7 @@ export default function Home() {
   };
 
   const handleLogout = () => {
+    resetAnalytics();
     ['stylist_token', 'stylist_user', 'stylist_suggestions', 'stylist_greeting'].forEach(k =>
       localStorage.removeItem(k)
     );
@@ -161,6 +174,7 @@ export default function Home() {
     if (!user) return;
     playSuccessChime();
     const url = buildShopUrl(piece.lien_recherche || `${piece.type} ${piece.marque}`);
+    track('product_link_clicked', { marque: piece.marque, type: piece.type, prix: piece.prix });
     saveClick(user.id, {
       product_name: piece.type, marque: piece.marque,
       prix: typeof piece.prix === 'number' ? piece.prix : parseFloat(String(piece.prix)) || 0,
@@ -168,7 +182,7 @@ export default function Home() {
     }).catch(console.error);
   };
 
-  const handleTabChange = (tab: TabType) => { playPop(); setActiveTab(tab); };
+  const handleTabChange = (tab: TabType) => { playPop(); setActiveTab(tab); track('tab_changed', { tab }); };
 
   // ─── Guard screens ────────────────────────────────────────────────────────────
   if (!user) return <UserForm onUserCreated={handleUserCreated} />;
@@ -182,6 +196,7 @@ export default function Home() {
   if (showSettings) return (
     <UserSettings
       user={user}
+      wardrobeCount={wardrobeItems.length}
       onBack={() => setShowSettings(false)}
       onUserUpdated={(updated) => {
         setUser(updated);
@@ -226,6 +241,7 @@ export default function Home() {
               </div>
             </div>
             <p className="text-sm font-bold text-white hidden sm:block">{user.prenom}</p>
+            <StreakBadge streak={user.streak_current ?? 0} streakMax={user.streak_max} />
             {!user.is_premium && (
               <button
                 onClick={() => setShowUpgradeModal(true)}
@@ -260,7 +276,9 @@ export default function Home() {
                 user={user} weather={weather} greeting={greeting} dateStr={dateStr}
                 suggestions={suggestions} loadingSuggestions={loadingSuggestions}
                 suggestionLimitReached={suggestionLimitReached}
+                wardrobeCount={wardrobeItems.length}
                 onRefresh={fetchSuggestions} onProductClick={handleProductClick}
+                onGoToWardrobe={() => handleTabChange('wardrobe')}
               />
             )}
 

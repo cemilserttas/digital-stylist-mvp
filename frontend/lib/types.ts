@@ -13,6 +13,9 @@ export interface User {
   referral_code?: string | null;
   referral_count?: number;
   push_notifications_enabled?: boolean;
+  streak_current?: number;
+  streak_max?: number;
+  streak_last_activity?: string | null;
 }
 
 export interface ReferralInfo {

@@ -116,13 +116,21 @@ async def upload_clothing_item(
 async def get_user_wardrobe(
     user_id: int,
     category: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
     if current_user.id != user_id:
         raise HTTPException(status_code=403, detail="Accès refusé")
 
-    statement = select(ClothingItem).where(ClothingItem.user_id == user_id)
+    statement = (
+        select(ClothingItem)
+        .where(ClothingItem.user_id == user_id)
+        .order_by(ClothingItem.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
     if category:
         statement = statement.where(ClothingItem.category == category)
     result = await session.execute(statement)

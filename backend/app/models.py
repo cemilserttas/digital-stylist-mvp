@@ -49,6 +49,12 @@ class User(UserBase, table=True):
     fcm_token: Optional[str] = Field(default=None, index=True)
     push_notifications_enabled: bool = Field(default=False)
     push_city: Optional[str] = Field(default=None)
+    # Streak / gamification
+    streak_current: int = Field(default=0)
+    streak_max: int = Field(default=0)
+    streak_last_activity: Optional[date] = Field(default=None)
+    # Email (optional — collected post-onboarding for transactional emails)
+    email: Optional[str] = Field(default=None, index=True)
     clothing_items: List["ClothingItem"] = Relationship(back_populates="user")
     link_clicks: List["LinkClick"] = Relationship(back_populates="user")
     outfit_plans: List["OutfitPlan"] = Relationship(back_populates="user")
@@ -56,6 +62,7 @@ class User(UserBase, table=True):
 class UserCreate(UserBase):
     password: str
     referral_code: Optional[str] = None  # code of the person who referred this user
+    email: Optional[str] = None          # optional — used for transactional emails
 
 class UserRead(UserBase):
     id: int
@@ -64,6 +71,9 @@ class UserRead(UserBase):
     referral_code: Optional[str] = None
     referral_count: int = 0
     push_notifications_enabled: bool = False
+    streak_current: int = 0
+    streak_max: int = 0
+    streak_last_activity: Optional[date] = None
 
 # Shared properties
 class ClothingItemBase(SQLModel):
@@ -74,7 +84,7 @@ class ClothingItemBase(SQLModel):
     image_path: str
     category: str = Field(default="wardrobe")
     created_at: datetime = Field(default_factory=_utcnow)
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="user.id", index=True)
 
 # Database model
 class ClothingItem(ClothingItemBase, table=True):
@@ -94,7 +104,7 @@ class LinkClickBase(SQLModel):
     prix: float
     url: str
     clicked_at: datetime = Field(default_factory=_utcnow)
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="user.id", index=True)
 
 class LinkClick(LinkClickBase, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -117,7 +127,7 @@ class OutfitPlanBase(SQLModel):
     notes: Optional[str] = None
     item_ids: str = Field(default="[]")  # JSON array of ClothingItem ids
     created_at: datetime = Field(default_factory=_utcnow)
-    user_id: int = Field(foreign_key="user.id")
+    user_id: int = Field(foreign_key="user.id", index=True)
 
 
 class OutfitPlan(OutfitPlanBase, table=True):

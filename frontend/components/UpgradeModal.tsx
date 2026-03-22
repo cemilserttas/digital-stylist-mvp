@@ -14,12 +14,12 @@ export interface UpgradeModalProps {
 }
 
 const FEATURES = [
-  { icon: Infinity,      label: 'Suggestions IA illimitées' },
-  { icon: MessageCircle, label: 'Chat styliste illimité' },
-  { icon: ImageIcon,     label: 'Garde-robe illimitée (vs 20 pièces)' },
-  { icon: Bell,          label: 'Suggestions push matinales' },
-  { icon: Zap,           label: 'Suppression de fond automatique' },
-  { icon: Sparkles,      label: 'Score de garde-robe IA complet' },
+  { icon: Infinity,      label: 'Suggestions tenues IA illimitées', sub: '1/jour en gratuit' },
+  { icon: MessageCircle, label: 'Chat styliste illimité', sub: '5 messages/jour en gratuit' },
+  { icon: ImageIcon,     label: 'Garde-robe illimitée', sub: '20 pièces max en gratuit' },
+  { icon: Bell,          label: 'Conseil push à 7h30 selon la météo', sub: 'Exclusif Premium' },
+  { icon: Zap,           label: 'Suppression de fond auto sur tes photos', sub: 'Exclusif Premium' },
+  { icon: Sparkles,      label: 'Score IA complet de ta garde-robe', sub: 'Exclusif Premium' },
 ];
 
 export default function UpgradeModal({ user, onClose, defaultPlan = 'monthly' }: UpgradeModalProps) {
@@ -71,7 +71,7 @@ export default function UpgradeModal({ user, onClose, defaultPlan = 'monthly' }:
               </div>
               <h2 className="text-2xl font-black text-white mb-1">Passe à Premium</h2>
               <p className="text-sm text-white/70">
-                Libère tout le potentiel de ton styliste IA
+                Ton look parfait chaque matin — pour moins d&apos;un café par semaine
               </p>
             </div>
           </div>
@@ -92,15 +92,15 @@ export default function UpgradeModal({ user, onClose, defaultPlan = 'monthly' }:
                 >
                   {p === 'monthly' ? (
                     <>
-                      <span className="block text-base">2,99 €</span>
-                      <span className="block text-[11px] font-normal opacity-70">par mois</span>
+                      <span className="block text-base font-black">2,99 €</span>
+                      <span className="block text-[11px] font-normal opacity-70">par mois · ~0,10 €/jour</span>
                     </>
                   ) : (
                     <>
-                      <span className="block text-base">24,99 €</span>
-                      <span className="block text-[11px] font-normal opacity-70">par an</span>
+                      <span className="block text-base font-black">24,99 €</span>
+                      <span className="block text-[11px] font-normal opacity-70">par an · ~0,07 €/jour</span>
                       <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
-                        −30%
+                        −30% · Meilleur prix
                       </span>
                     </>
                   )}
@@ -109,14 +109,17 @@ export default function UpgradeModal({ user, onClose, defaultPlan = 'monthly' }:
             </div>
 
             {/* Features list */}
-            <ul className="space-y-2.5 mb-6">
-              {FEATURES.map(({ icon: Icon, label }) => (
+            <ul className="space-y-2 mb-6">
+              {FEATURES.map(({ icon: Icon, label, sub }) => (
                 <li key={label} className="flex items-center gap-3">
                   <div className="w-7 h-7 bg-purple-500/15 rounded-lg flex items-center justify-center shrink-0">
                     <Icon className="w-3.5 h-3.5 text-purple-400" />
                   </div>
-                  <span className="text-sm text-gray-300">{label}</span>
-                  <Check className="w-3.5 h-3.5 text-emerald-400 ml-auto shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm text-gray-200 block">{label}</span>
+                    <span className="text-[10px] text-gray-600">{sub}</span>
+                  </div>
+                  <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 </li>
               ))}
             </ul>
@@ -138,13 +141,13 @@ export default function UpgradeModal({ user, onClose, defaultPlan = 'monthly' }:
               ) : (
                 <>
                   <Crown className="w-5 h-5" />
-                  Passer à Premium
+                  {plan === 'yearly' ? 'Commencer — 24,99 €/an' : 'Commencer — 2,99 €/mois'}
                 </>
-              )}
+)}
             </motion.button>
 
             <p className="text-[11px] text-gray-600 text-center mt-3">
-              Paiement sécurisé par Stripe · Annulation à tout moment
+              Paiement sécurisé par Stripe · Sans engagement · Annulation en 1 clic
             </p>
           </div>
         </motion.div>

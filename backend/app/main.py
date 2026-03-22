@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import init_db, get_session
 from app.models import User
 from app.routers import wardrobe, users, admin, outfit_calendar, push, billing
+from app.routers.users import update_streak
 from app.services.weather_cron import start_scheduler, stop_scheduler
 from app.services.ai_service import get_daily_suggestions, chat_with_stylist
 from app.auth import get_current_user
@@ -123,8 +124,8 @@ app.add_middleware(
     allow_origins=origins,
     allow_origin_regex=origin_regex,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Admin-Key", "stripe-signature"],
 )
 
 os.makedirs("uploads", exist_ok=True)
@@ -174,11 +175,12 @@ async def daily_suggestions(
     }
     result = await get_daily_suggestions(profile, weather_data.model_dump())
 
-    # Increment counter after successful generation
+    # Increment counter + streak after successful generation
     current_user.suggestions_count_today = (
         (current_user.suggestions_count_today + 1) if current_user.suggestions_date == today else 1
     )
     current_user.suggestions_date = today
+    update_streak(current_user)
     session.add(current_user)
     await session.commit()
 
@@ -217,6 +219,7 @@ async def chat_endpoint(
         (current_user.chat_count_today + 1) if current_user.chat_date == today else 1
     )
     current_user.chat_date = today
+    update_streak(current_user)
     session.add(current_user)
     await session.commit()
 

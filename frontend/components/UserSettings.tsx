@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
     User as UserIcon, Settings, History, Trash2, Save, ArrowLeft,
-    ChevronRight, ExternalLink, AlertTriangle, Check, X, Clock, Palette, Gift, Copy, Share2
+    ChevronRight, ExternalLink, AlertTriangle, Check, X, Clock, Palette, Gift, Copy, Share2, Trophy
 } from 'lucide-react';
 import { updateUser, deleteUser, getClicks, clearClicks, getReferralInfo } from '@/lib/api';
 import type { ReferralInfo, User } from '@/lib/types';
 import StylePreferences from '@/components/StylePreferences';
 import PushNotificationSetup from '@/components/PushNotificationSetup';
+import BadgesSection from '@/components/BadgesSection';
 
 const MORPHOLOGIES = [
     { value: 'TRIANGLE', label: 'Triangle', icon: '🔺' },
@@ -28,6 +29,9 @@ interface UserData {
     referral_code?: string | null;
     referral_count?: number;
     push_notifications_enabled?: boolean;
+    is_premium?: boolean;
+    streak_current?: number;
+    streak_max?: number;
 }
 
 interface ClickRecord {
@@ -41,14 +45,16 @@ interface ClickRecord {
 
 interface UserSettingsProps {
     user: UserData;
+    wardrobeCount?: number;
+    chatCount?: number;
     onBack: () => void;
     onUserUpdated: (user: UserData) => void;
     onLogout: () => void;
 }
 
-type SettingsTab = 'profile' | 'style' | 'history' | 'referral' | 'danger';
+type SettingsTab = 'profile' | 'style' | 'badges' | 'history' | 'referral' | 'danger';
 
-export default function UserSettings({ user, onBack, onUserUpdated, onLogout }: UserSettingsProps) {
+export default function UserSettings({ user, wardrobeCount = 0, chatCount = 0, onBack, onUserUpdated, onLogout }: UserSettingsProps) {
     const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
 
     // Profile state
@@ -152,9 +158,19 @@ export default function UserSettings({ user, onBack, onUserUpdated, onLogout }: 
         } catch (err) { console.error(err); }
     };
 
+    const badgeStats = {
+        itemsCount: wardrobeCount,
+        chatMessages: chatCount,
+        streakCurrent: user.streak_current ?? 0,
+        streakMax: user.streak_max ?? 0,
+        isPremium: user.is_premium ?? false,
+        referralCount: user.referral_count ?? 0,
+    };
+
     const tabs = [
         { key: 'profile' as SettingsTab, icon: UserIcon, label: 'Mon Profil', desc: 'Gérer mes informations' },
         { key: 'style' as SettingsTab, icon: Palette, label: 'Mon Style', desc: 'Préférences mode' },
+        { key: 'badges' as SettingsTab, icon: Trophy, label: 'Badges', desc: 'Score & récompenses' },
         { key: 'history' as SettingsTab, icon: History, label: 'Historique', desc: 'Liens consultés' },
         { key: 'referral' as SettingsTab, icon: Gift, label: 'Parrainage', desc: 'Inviter des amis' },
         { key: 'danger' as SettingsTab, icon: AlertTriangle, label: 'Zone danger', desc: 'Supprimer le compte' },
@@ -371,6 +387,11 @@ export default function UserSettings({ user, onBack, onUserUpdated, onLogout }: 
                                     inline
                                 />
                             </div>
+                        )}
+
+                        {/* ===== BADGES TAB ===== */}
+                        {activeTab === 'badges' && (
+                            <BadgesSection stats={badgeStats} />
                         )}
 
                         {/* ===== HISTORY TAB ===== */}

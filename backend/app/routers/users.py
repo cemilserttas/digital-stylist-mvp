@@ -1,7 +1,7 @@
 import logging
 import secrets
 import string
-from datetime import timedelta, timezone, datetime
+from datetime import timedelta, timezone, datetime, date
 
 import bcrypt as _bcrypt
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,12 +13,39 @@ from typing import List, Optional
 from app.database import get_session
 from app.models import User, UserRead, UserCreate, LinkClick, LinkClickCreate, LinkClickRead, ClothingItem
 from app.auth import create_access_token, get_current_user
+from app.services.email_service import send_welcome_email
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 REFERRAL_PREMIUM_THRESHOLD = 3  # referrals needed to earn 1 free month of premium
+
+
+def update_streak(user: User) -> bool:
+    """
+    Increment streak if user is active today. Returns True if streak milestone hit.
+    Call this on any meaningful user action (upload, suggestion viewed).
+    """
+    today = date.today()
+    last = user.streak_last_activity
+
+    if last == today:
+        return False  # already counted today
+
+    if last == today - timedelta(days=1):
+        user.streak_current += 1
+    else:
+        # Gap > 1 day → reset streak
+        user.streak_current = 1
+
+    user.streak_last_activity = today
+    if user.streak_current > user.streak_max:
+        user.streak_max = user.streak_current
+
+    milestone = user.streak_current in (3, 7, 14, 30)
+    logger.info("Streak updated user=%d streak=%d milestone=%s", user.id, user.streak_current, milestone)
+    return milestone
 
 
 def _generate_referral_code(prenom: str) -> str:
@@ -98,6 +125,12 @@ async def create_user(
 
     token = create_access_token(user.id)
     logger.info("User created: id=%d prenom=%s referred_by=%s", user.id, user.prenom, referrer.id if referrer else None)
+
+    # Fire-and-forget welcome email (no await — don't block the response)
+    if user.email:
+        import asyncio
+        asyncio.create_task(send_welcome_email(to=user.email, prenom=user.prenom))
+
     return {"user": UserRead.model_validate(user).model_dump(), "token": token}
 
 
