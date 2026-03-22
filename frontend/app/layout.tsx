@@ -18,12 +18,20 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://digital-stylist-mvp.vercel.app';
+
 export const metadata: Metadata = {
-  title: "Digital Stylist — Votre styliste IA personnel",
-  description: "Analysez vos vêtements, recevez des suggestions personnalisées et construisez votre style idéal avec l'intelligence artificielle.",
-  keywords: ["styliste IA", "mode", "garde-robe", "tenues", "conseils mode", "personal stylist"],
+  title: "DigitalStylist — Ton look parfait en 30 secondes chaque matin",
+  description: "Ton styliste IA francophone. Il analyse ta garde-robe, regarde la météo, et te dit quoi porter ce matin. Gratuit, sans effort, sans stress.",
+  keywords: [
+    "styliste IA", "tenue du jour", "look du jour", "garde-robe IA",
+    "conseil mode IA", "application mode", "tenue météo",
+    "personal stylist IA", "garde-robe capsule", "mode intelligence artificielle",
+  ],
   authors: [{ name: "Digital Stylist" }],
   manifest: "/manifest.json",
+  metadataBase: new URL(APP_URL),
+  alternates: { canonical: APP_URL },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -33,16 +41,24 @@ export const metadata: Metadata = {
     apple: '/icon-192.png',
   },
   openGraph: {
-    title: "Digital Stylist — Votre styliste IA personnel",
-    description: "Analysez vos vêtements et recevez des suggestions de tenues personnalisées grâce à l'IA.",
+    title: "DigitalStylist — Ton look parfait en 30 secondes",
+    description: "Fini le stress du matin. Ton styliste IA analyse ta garde-robe, regarde la météo, et te dit quoi porter. Gratuit, francophone.",
     type: "website",
     locale: "fr_FR",
-    siteName: "Digital Stylist",
+    siteName: "DigitalStylist",
+    url: APP_URL,
+    images: [{
+      url: `${APP_URL}/opengraph-image`,
+      width: 1200,
+      height: 630,
+      alt: "DigitalStylist — Ton styliste IA personnel",
+    }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Digital Stylist — Styliste IA personnel",
-    description: "Analysez votre garde-robe et recevez des conseils mode personnalisés.",
+    title: "DigitalStylist — Ton look parfait en 30 secondes",
+    description: "Fini le stress du matin. L'IA analyse ta garde-robe + météo et te dit quoi porter. Gratuit.",
+    images: [`${APP_URL}/opengraph-image`],
   },
 };
 

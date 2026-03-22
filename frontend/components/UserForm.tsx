@@ -91,15 +91,32 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
             }} />
 
             <div className="relative max-w-lg w-full">
-                {/* Logo */}
-                <div className="text-center mb-10">
-                    <div className="inline-flex items-center gap-2 mb-3">
+                {/* Logo + Hero */}
+                <div className="text-center mb-8">
+                    <div className="inline-flex items-center gap-2 mb-4">
                         <Sparkles className="w-6 h-6 text-purple-400" />
                         <h1 className="text-4xl font-black tracking-tight text-white">
                             DIGITAL<span className="bg-linear-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">STYLIST</span>
                         </h1>
                     </div>
-                    <p className="text-gray-400 text-sm">Votre styliste personnel propulsé par l&apos;intelligence artificielle</p>
+                    <p className="text-white font-bold text-lg mb-1">Ton look parfait en 30 secondes.</p>
+                    <p className="text-gray-400 text-sm">Chaque matin, ton IA regarde la météo et te dit quoi porter.</p>
+
+                    {/* Bénéfices clés — visible seulement en inscription */}
+                    {mode === 'register' && (
+                        <div className="grid grid-cols-3 gap-3 mt-5 text-center">
+                            {[
+                                { emoji: '☀️', label: 'Adapté à la météo' },
+                                { emoji: '👗', label: 'Selon ta garde-robe' },
+                                { emoji: '⚡', label: 'Gratuit, 30 sec' },
+                            ].map(({ emoji, label }) => (
+                                <div key={label} className="bg-white/5 border border-white/10 rounded-2xl py-3 px-2">
+                                    <div className="text-2xl mb-1">{emoji}</div>
+                                    <p className="text-[11px] text-gray-400 leading-tight">{label}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
@@ -370,9 +387,10 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                     )}
                 </div>
 
-                <p className="text-center text-gray-600 text-xs mt-6">
-                    Propulsé par l&apos;IA Google Gemini
-                </p>
+                <div className="text-center mt-5 space-y-1">
+                    <p className="text-gray-600 text-xs">Sans carte bancaire · Sans engagement · 100% francophone</p>
+                    <p className="text-gray-700 text-xs">Propulsé par Google Gemini IA · Données sécurisées</p>
+                </div>
             </div>
 
             <style jsx>{`
