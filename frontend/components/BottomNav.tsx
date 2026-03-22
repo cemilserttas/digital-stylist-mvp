@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Sparkles, Shirt, Heart, CalendarDays } from 'lucide-react';
+import { Sparkles, Shirt, Heart, CalendarDays, Store } from 'lucide-react';
 import type { TabType } from '@/lib/types';
 
 export interface BottomNavProps {
@@ -14,6 +14,7 @@ export interface BottomNavProps {
 const TABS: { key: TabType; icon: React.ElementType; label: string; countKey?: 'wardrobe' | 'wishlist' }[] = [
   { key: 'home',     icon: Sparkles,     label: 'Accueil' },
   { key: 'wardrobe', icon: Shirt,        label: 'Dressing', countKey: 'wardrobe' },
+  { key: 'shop',     icon: Store,        label: 'Boutique' },
   { key: 'calendar', icon: CalendarDays, label: 'Planning' },
   { key: 'wishlist', icon: Heart,        label: 'Wishlist',  countKey: 'wishlist' },
 ];

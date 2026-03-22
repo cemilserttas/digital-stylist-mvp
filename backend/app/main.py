@@ -32,7 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import init_db, get_session
 from app.models import User
-from app.routers import wardrobe, users, admin, outfit_calendar, push, billing
+from app.routers import wardrobe, users, admin, outfit_calendar, push, billing, shop, orders, addresses
 from app.routers.users import update_streak
 from app.services.weather_cron import start_scheduler, stop_scheduler
 from app.services.ai_service import get_daily_suggestions, chat_with_stylist
@@ -140,6 +140,9 @@ app.include_router(admin.router)
 app.include_router(outfit_calendar.router)
 app.include_router(push.router)
 app.include_router(billing.router)
+app.include_router(shop.router)
+app.include_router(orders.router)
+app.include_router(addresses.router)
 
 @app.get("/")
 def read_root():

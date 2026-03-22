@@ -73,7 +73,7 @@ export interface WeatherData {
   forecast?: DayForecast[];
 }
 
-export type TabType = 'home' | 'wardrobe' | 'wishlist' | 'calendar';
+export type TabType = 'home' | 'wardrobe' | 'wishlist' | 'calendar' | 'shop';
 
 export interface OutfitPlan {
   id: number;
@@ -81,4 +81,77 @@ export interface OutfitPlan {
   occasion?: string | null;
   notes?: string | null;
   item_ids: number[];
+}
+
+// ── Marketplace ────────────────────────────────────────────────────────────
+
+export type ListingStatus = 'draft' | 'active' | 'sold' | 'cancelled';
+export type OrderStatus = 'pending' | 'shipped' | 'delivered' | 'completed' | 'cancelled' | 'refund_requested' | 'refunded';
+export type ListingCondition = 'Neuf avec étiquette' | 'Très bon état' | 'Bon état' | 'Satisfaisant';
+
+export const LISTING_CONDITIONS: ListingCondition[] = [
+  'Neuf avec étiquette', 'Très bon état', 'Bon état', 'Satisfaisant',
+];
+
+export interface MarketplaceListing {
+  id: number;
+  seller_id: number;
+  clothing_item_id?: number | null;
+  title: string;
+  description: string;
+  price_cents: number;
+  condition: ListingCondition;
+  size?: string | null;
+  brand?: string | null;
+  category_type: string;
+  color: string;
+  season: string;
+  image_urls: string[];
+  status: ListingStatus;
+  views_count: number;
+  created_at: string;
+  seller_prenom?: string | null;
+}
+
+export interface ShippingAddress {
+  id: number;
+  user_id: number;
+  label: string;
+  full_name: string;
+  line1: string;
+  line2?: string | null;
+  postal_code: string;
+  city: string;
+  country: string;
+  phone?: string | null;
+  is_default: boolean;
+  created_at: string;
+}
+
+export interface MarketplaceOrder {
+  id: number;
+  listing_id: number;
+  buyer_id: number;
+  seller_id: number;
+  amount_cents: number;
+  commission_cents: number;
+  seller_payout_cents: number;
+  status: OrderStatus;
+  tracking_number?: string | null;
+  tracking_carrier?: string | null;
+  paid_at?: string | null;
+  shipped_at?: string | null;
+  delivered_at?: string | null;
+  created_at: string;
+  listing_title?: string | null;
+  listing_image?: string | null;
+  buyer_prenom?: string | null;
+  seller_prenom?: string | null;
+}
+
+export interface PriceSuggestion {
+  price_min: number;
+  price_max: number;
+  suggested: number;
+  reasoning: string;
 }

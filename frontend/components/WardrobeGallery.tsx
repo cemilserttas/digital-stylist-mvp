@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
-import { Trash2, Pencil, X, Check, Eye } from 'lucide-react';
-import { getImageUrl, deleteClothing, updateClothing } from '../lib/api';
+import { Trash2, Pencil, X, Check, Eye, Tag } from 'lucide-react';
+import { getImageUrl, deleteClothing, updateClothing, createListingFromWardrobe } from '../lib/api';
 import ClothingDetail from './ClothingDetail';
+import CreateListingModal from './CreateListingModal';
 
 interface ClothingItem {
     id: number;
@@ -29,7 +30,18 @@ export default function WardrobeGallery({ items, loading, onItemChanged }: Wardr
     const [deletingId, setDeletingId] = useState<number | null>(null);
     const [saving, setSaving] = useState(false);
     const [selectedItem, setSelectedItem] = useState<ClothingItem | null>(null);
+    const [sellPrefill, setSellPrefill] = useState<Record<string, unknown> | null>(null);
     const { playPop } = useSoundEffects();
+
+    const handleSell = async (item: ClothingItem) => {
+        playPop();
+        try {
+            const prefilled = await createListingFromWardrobe(item.id);
+            setSellPrefill(prefilled);
+        } catch (err) {
+            console.error('Failed to prefill listing', err);
+        }
+    };
 
     const handleStartEdit = (item: ClothingItem) => {
         playPop();
@@ -205,6 +217,13 @@ export default function WardrobeGallery({ items, loading, onItemChanged }: Wardr
                                                 Détails
                                             </button>
                                             <button
+                                                onClick={() => handleSell(item)}
+                                                className="flex items-center justify-center p-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
+                                                title="Vendre"
+                                            >
+                                                <Tag className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
                                                 onClick={() => handleStartEdit(item)}
                                                 className="flex items-center justify-center p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
                                                 title="Modifier"
@@ -233,6 +252,21 @@ export default function WardrobeGallery({ items, loading, onItemChanged }: Wardr
                 <ClothingDetail
                     item={selectedItem}
                     onClose={() => setSelectedItem(null)}
+                />
+            )}
+
+            {/* Sell Modal */}
+            {sellPrefill && (
+                <CreateListingModal
+                    prefilled={sellPrefill as {
+                        clothing_item_id?: number | null;
+                        title: string; description: string; price_cents: number;
+                        condition: string; size?: string | null; brand?: string | null;
+                        category_type: string; color: string; season: string;
+                        image_urls: string[];
+                    }}
+                    onClose={() => setSellPrefill(null)}
+                    onCreated={() => { setSellPrefill(null); onItemChanged(); }}
                 />
             )}
         </>

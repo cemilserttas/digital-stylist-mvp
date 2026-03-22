@@ -149,6 +149,28 @@ class OutfitPlanRead(OutfitPlanBase):
 # ---------------------------------------------------------------------------
 # AI Request Tracking — every Gemini call is logged
 # ---------------------------------------------------------------------------
+class ListingStatus(str, Enum):
+    DRAFT = "draft"
+    ACTIVE = "active"
+    SOLD = "sold"
+    CANCELLED = "cancelled"
+
+class OrderStatus(str, Enum):
+    PENDING = "pending"
+    SHIPPED = "shipped"
+    DELIVERED = "delivered"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    REFUND_REQUESTED = "refund_requested"
+    REFUNDED = "refunded"
+
+class ListingCondition(str, Enum):
+    NEUF = "Neuf avec étiquette"
+    TRES_BON = "Très bon état"
+    BON = "Bon état"
+    SATISFAISANT = "Satisfaisant"
+
+
 class AIRequestType(str, Enum):
     ANALYZE = "analyze"
     SUGGEST = "suggest"
@@ -168,3 +190,151 @@ class AIRequest(SQLModel, table=True):
     status: str = Field(default="success")       # "success" | "error" | "blocked"
     error_message: Optional[str] = Field(default=None)
     created_at: datetime = Field(default_factory=_utcnow, index=True)
+
+
+# ---------------------------------------------------------------------------
+# Marketplace — e-commerce / resale
+# ---------------------------------------------------------------------------
+class MarketplaceListing(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    seller_id: int = Field(foreign_key="user.id", index=True)
+    clothing_item_id: Optional[int] = Field(default=None, foreign_key="clothingitem.id")
+    title: str
+    description: str = Field(default="")
+    price_cents: int  # price in euro cents (2500 = 25.00 EUR)
+    condition: str = Field(default="Bon état")
+    size: Optional[str] = Field(default=None)
+    brand: Optional[str] = Field(default=None, index=True)
+    category_type: str = Field(default="")
+    color: str = Field(default="")
+    season: str = Field(default="")
+    image_urls: str = Field(default="[]")  # JSON array of image URLs
+    status: str = Field(default="active", index=True)
+    views_count: int = Field(default=0)
+    created_at: datetime = Field(default_factory=_utcnow, index=True)
+    updated_at: datetime = Field(default_factory=_utcnow)
+
+
+class ListingCreate(SQLModel):
+    clothing_item_id: Optional[int] = None
+    title: str
+    description: str = ""
+    price_cents: int
+    condition: str = "Bon état"
+    size: Optional[str] = None
+    brand: Optional[str] = None
+    category_type: str = ""
+    color: str = ""
+    season: str = ""
+    image_urls: list[str] = []
+
+
+class ListingUpdate(SQLModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    price_cents: Optional[int] = None
+    condition: Optional[str] = None
+    size: Optional[str] = None
+    status: Optional[str] = None
+
+
+class ListingRead(SQLModel):
+    id: int
+    seller_id: int
+    clothing_item_id: Optional[int] = None
+    title: str
+    description: str
+    price_cents: int
+    condition: str
+    size: Optional[str] = None
+    brand: Optional[str] = None
+    category_type: str
+    color: str
+    season: str
+    image_urls: list[str] = []
+    status: str
+    views_count: int = 0
+    created_at: datetime
+    seller_prenom: Optional[str] = None
+
+
+class ShippingAddress(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    label: str = Field(default="Maison")
+    full_name: str
+    line1: str
+    line2: Optional[str] = Field(default=None)
+    postal_code: str
+    city: str
+    country: str = Field(default="FR")
+    phone: Optional[str] = Field(default=None)
+    is_default: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
+class ShippingAddressCreate(SQLModel):
+    label: str = "Maison"
+    full_name: str
+    line1: str
+    line2: Optional[str] = None
+    postal_code: str
+    city: str
+    country: str = "FR"
+    phone: Optional[str] = None
+    is_default: bool = False
+
+
+class ShippingAddressRead(SQLModel):
+    id: int
+    user_id: int
+    label: str
+    full_name: str
+    line1: str
+    line2: Optional[str] = None
+    postal_code: str
+    city: str
+    country: str
+    phone: Optional[str] = None
+    is_default: bool
+    created_at: datetime
+
+
+class MarketplaceOrder(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    listing_id: int = Field(foreign_key="marketplacelisting.id", index=True)
+    buyer_id: int = Field(foreign_key="user.id", index=True)
+    seller_id: int = Field(foreign_key="user.id", index=True)
+    shipping_address_id: int = Field(foreign_key="shippingaddress.id")
+    amount_cents: int  # total charged to buyer (item + shipping)
+    commission_cents: int  # 10% platform fee
+    seller_payout_cents: int  # 90% to seller
+    stripe_payment_intent_id: Optional[str] = Field(default=None)
+    tracking_number: Optional[str] = Field(default=None)
+    tracking_carrier: Optional[str] = Field(default=None)
+    status: str = Field(default="pending", index=True)
+    paid_at: Optional[datetime] = Field(default=None)
+    shipped_at: Optional[datetime] = Field(default=None)
+    delivered_at: Optional[datetime] = Field(default=None)
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
+class OrderRead(SQLModel):
+    id: int
+    listing_id: int
+    buyer_id: int
+    seller_id: int
+    amount_cents: int
+    commission_cents: int
+    seller_payout_cents: int
+    status: str
+    tracking_number: Optional[str] = None
+    tracking_carrier: Optional[str] = None
+    paid_at: Optional[datetime] = None
+    shipped_at: Optional[datetime] = None
+    delivered_at: Optional[datetime] = None
+    created_at: datetime
+    listing_title: Optional[str] = None
+    listing_image: Optional[str] = None
+    buyer_prenom: Optional[str] = None
+    seller_prenom: Optional[str] = None

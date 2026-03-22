@@ -13,6 +13,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import OutfitCalendar from '@/components/OutfitCalendar';
 import HomeTab from '@/components/HomeTab';
 import WardrobeTab from '@/components/WardrobeTab';
+import ShopTab from '@/components/ShopTab';
 import BottomNav from '@/components/BottomNav';
 import UpgradeModal from '@/components/UpgradeModal';
 import StreakBadge from '@/components/StreakBadge';
@@ -62,6 +63,10 @@ export default function Home() {
   // Refresh user after Stripe redirect (premium status may have changed)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    if (params.get('shop_payment') === 'success') {
+      window.history.replaceState({}, '', window.location.pathname);
+      setActiveTab('shop');
+    }
     if (params.get('payment') === 'success') {
       // Remove query param without reload
       window.history.replaceState({}, '', window.location.pathname);
@@ -287,6 +292,12 @@ export default function Home() {
                 <div className="pt-6">
                   <OutfitCalendar userId={user.id} wardrobeItems={wardrobeItems} forecast={weather?.forecast} />
                 </div>
+              </ErrorBoundary>
+            )}
+
+            {activeTab === 'shop' && (
+              <ErrorBoundary label="Boutique">
+                <ShopTab user={user} />
               </ErrorBoundary>
             )}
 

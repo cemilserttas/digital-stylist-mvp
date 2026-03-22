@@ -189,3 +189,116 @@ export const getImageUrl = (path: string) => {
     const normalizedPath = path.replace(/\\/g, '/');
     return `${API_URL}/${normalizedPath}`;
 };
+
+// ── Marketplace Listings ───────────────────────────────────────────────────
+
+export const getListings = async (params?: {
+    category_type?: string; color?: string; season?: string; size?: string;
+    brand?: string; condition?: string; price_min?: number; price_max?: number;
+    sort?: string; limit?: number; offset?: number;
+}) => {
+    const query = new URLSearchParams();
+    if (params) {
+        Object.entries(params).forEach(([k, v]) => {
+            if (v !== undefined && v !== null && v !== '') query.append(k, String(v));
+        });
+    }
+    const response = await api.get(`/shop/listings?${query.toString()}`);
+    return response.data;
+};
+
+export const getListing = async (listingId: number) => {
+    const response = await api.get(`/shop/listings/${listingId}`);
+    return response.data;
+};
+
+export const searchListings = async (q: string) => {
+    const response = await api.get(`/shop/search?q=${encodeURIComponent(q)}`);
+    return response.data;
+};
+
+export const createListing = async (data: {
+    clothing_item_id?: number | null; title: string; description?: string;
+    price_cents: number; condition?: string; size?: string; brand?: string;
+    category_type?: string; color?: string; season?: string; image_urls?: string[];
+}) => {
+    const response = await api.post('/shop/listings', data);
+    return response.data;
+};
+
+export const createListingFromWardrobe = async (itemId: number) => {
+    const response = await api.post(`/shop/listings/from-wardrobe/${itemId}`);
+    return response.data;
+};
+
+export const updateListing = async (listingId: number, data: Record<string, unknown>) => {
+    const response = await api.put(`/shop/listings/${listingId}`, data);
+    return response.data;
+};
+
+export const cancelListing = async (listingId: number) => {
+    const response = await api.delete(`/shop/listings/${listingId}`);
+    return response.data;
+};
+
+export const getMyListings = async () => {
+    const response = await api.get('/shop/my-listings');
+    return response.data;
+};
+
+export const getAiPriceSuggestion = async (listingId: number) => {
+    const response = await api.post(`/shop/listings/${listingId}/ai-price`);
+    return response.data;
+};
+
+// ── Orders ─────────────────────────────────────────────────────────────────
+
+export const checkoutListing = async (listingId: number) => {
+    const response = await api.post(`/orders/checkout/${listingId}`);
+    return response.data as { order_id: number; checkout_url: string | null; dev_mode?: boolean };
+};
+
+export const getMyPurchases = async () => {
+    const response = await api.get('/orders/my-purchases');
+    return response.data;
+};
+
+export const getMySales = async () => {
+    const response = await api.get('/orders/my-sales');
+    return response.data;
+};
+
+export const getOrder = async (orderId: number) => {
+    const response = await api.get(`/orders/${orderId}`);
+    return response.data;
+};
+
+export const shipOrder = async (orderId: number, data: { tracking_number: string; tracking_carrier: string }) => {
+    const response = await api.put(`/orders/${orderId}/ship`, data);
+    return response.data;
+};
+
+export const confirmDelivery = async (orderId: number) => {
+    const response = await api.put(`/orders/${orderId}/delivered`);
+    return response.data;
+};
+
+// ── Shipping Addresses ─────────────────────────────────────────────────────
+
+export const getAddresses = async (userId: number) => {
+    const response = await api.get(`/addresses/${userId}`);
+    return response.data;
+};
+
+export const createAddress = async (userId: number, data: {
+    label?: string; full_name: string; line1: string; line2?: string;
+    postal_code: string; city: string; country?: string; phone?: string; is_default?: boolean;
+}) => {
+    const response = await api.post(`/addresses/${userId}`, data);
+    return response.data;
+};
+
+export const deleteAddress = async (addressId: number) => {
+    const response = await api.delete(`/addresses/${addressId}`);
+    return response.data;
+};
