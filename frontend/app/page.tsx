@@ -19,7 +19,7 @@ import UpgradeModal from '@/components/UpgradeModal';
 import StreakBadge from '@/components/StreakBadge';
 import { getWardrobe, getDailySuggestions, saveClick, updateUser, getUser } from '@/lib/api';
 import type { User, ClothingItem, Suggestion, SuggestionPiece, TabType } from '@/lib/types';
-import { buildShopUrl } from '@/lib/utils';
+import { buildShopUrl, enrichProductUrl } from '@/lib/utils';
 import { identifyUser, track, resetAnalytics } from '@/lib/analytics';
 
 export default function Home() {
@@ -178,8 +178,14 @@ export default function Home() {
   const handleProductClick = (piece: SuggestionPiece) => {
     if (!user) return;
     playSuccessChime();
-    const url = buildShopUrl(piece.lien_recherche || `${piece.type} ${piece.marque}`);
-    track('product_link_clicked', { marque: piece.marque, type: piece.type, prix: piece.prix });
+    const hasDirectUrl = piece.url_produit && piece.url_produit.startsWith('http');
+    const url = hasDirectUrl
+      ? enrichProductUrl(piece.url_produit!)
+      : buildShopUrl(piece.lien_recherche || `${piece.type} ${piece.marque}`);
+    track('product_link_clicked', {
+      marque: piece.marque, type: piece.type, prix: piece.prix,
+      shop: piece.shop || null, direct_link: !!hasDirectUrl,
+    });
     saveClick(user.id, {
       product_name: piece.type, marque: piece.marque,
       prix: typeof piece.prix === 'number' ? piece.prix : parseFloat(String(piece.prix)) || 0,

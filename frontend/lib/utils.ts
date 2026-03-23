@@ -1,7 +1,68 @@
 // Shared utility functions — import from here; never duplicate in components.
 
 // ---------------------------------------------------------------------------
-// Affiliate partner detection
+// Product URL helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the shop display name from a product URL domain.
+ * Falls back to capitalised hostname if unknown.
+ */
+export function extractShopName(url: string): string {
+  try {
+    const host = new URL(url).hostname.replace('www.', '').replace('www2.', '');
+    const map: Record<string, string> = {
+      'amazon.fr': 'Amazon',
+      'zalando.fr': 'Zalando',
+      'asos.com': 'ASOS',
+      'hm.com': 'H&M',
+      'zara.com': 'Zara',
+      'uniqlo.com': 'Uniqlo',
+      'bershka.com': 'Bershka',
+      'pullandbear.com': 'Pull&Bear',
+      'kiabi.com': 'Kiabi',
+      'decathlon.fr': 'Decathlon',
+      'c-and-a.com': 'C&A',
+      'veepee.fr': 'Veepee',
+      'nike.com': 'Nike',
+      'adidas.fr': 'Adidas',
+      'mango.com': 'Mango',
+    };
+    return map[host] ?? host.split('.')[0].charAt(0).toUpperCase() + host.split('.')[0].slice(1);
+  } catch {
+    return 'Shop';
+  }
+}
+
+/**
+ * Appends UTM + affiliate params to a direct product URL.
+ * Preserves the original URL structure (no search redirect).
+ */
+export function enrichProductUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    u.searchParams.set('utm_source', 'digitalstylist');
+    u.searchParams.set('utm_medium', 'affiliate');
+    u.searchParams.set('utm_campaign', 'outfit_suggestion');
+    // Add affiliate IDs where applicable
+    const host = u.hostname.replace('www.', '').replace('www2.', '');
+    if (host === 'amazon.fr' || host.endsWith('.amazon.fr')) {
+      u.searchParams.set('tag', process.env.NEXT_PUBLIC_AMAZON_TAG ?? 'digitalstylist-21');
+    } else if (host === 'zalando.fr') {
+      const pid = process.env.NEXT_PUBLIC_ZALANDO_PARTNER_ID;
+      if (pid) u.searchParams.set('pid', pid);
+    } else if (host === 'asos.com') {
+      const affid = process.env.NEXT_PUBLIC_ASOS_AFF_ID;
+      if (affid) u.searchParams.set('affid', affid);
+    }
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Affiliate partner detection (fallback for search URLs)
 // ---------------------------------------------------------------------------
 
 type Partner = 'amazon' | 'zalando' | 'asos' | 'veepee' | 'google';

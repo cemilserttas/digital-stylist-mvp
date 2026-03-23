@@ -41,7 +41,9 @@ export interface SuggestionPiece {
   type: string;
   marque: string;
   prix: number;
-  lien_recherche: string;
+  url_produit?: string;       // Direct product page URL (from Google Search grounding)
+  shop?: string;              // Shop name (e.g. "Zalando", "Amazon", "H&M")
+  lien_recherche?: string;    // Fallback search query if no direct URL found
 }
 
 export interface Suggestion {

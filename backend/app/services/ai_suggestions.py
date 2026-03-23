@@ -1,6 +1,7 @@
 """
 AI service — daily outfit suggestions.
 Generates 3 personalized looks based on user profile + current weather.
+Uses Google Search grounding to find real products with direct URLs.
 """
 import logging
 from typing import Optional
@@ -31,8 +32,8 @@ async def get_daily_suggestions(
     ville = weather_data.get("ville", "Paris")
 
     prompt = f"""
-Tu es un personal shopper MALIN specialise dans les BONS PLANS mode. Tu trouves des looks stylés a PETIT PRIX.
-Tu privilegies les PROMOS, SOLDES, et le meilleur rapport qualite-prix.
+Tu es un personal shopper EXPERT. Tu trouves des VRAIS produits disponibles a l'achat sur des sites e-commerce.
+Utilise Google Search pour trouver chaque produit REEL avec son URL DIRECTE vers la page produit.
 
 PROFIL :
 - Prenom : {prenom}
@@ -45,7 +46,9 @@ METEO ACTUELLE :
 - Conditions : {weather_desc}
 - Ville : {ville}
 
-OBJECTIF : 3 tenues COMPLETES et STYLEES pour MOINS de 100-150 euros chacune au total.
+MISSION : 3 tenues COMPLETES avec des produits REELS trouvables en ligne. Budget 50-150 euros par tenue.
+
+IMPORTANT : Pour chaque piece, cherche le produit EXACT sur un site e-commerce (amazon.fr, zalando.fr, asos.com, hm.com, zara.com, uniqlo.com, bershka.com, pullandbear.com, etc.) et donne l'URL DIRECTE vers la PAGE PRODUIT (PAS une page de recherche, PAS une page categorie).
 
 Reponds UNIQUEMENT avec un objet JSON valide :
 
@@ -54,34 +57,58 @@ Reponds UNIQUEMENT avec un objet JSON valide :
   "suggestions": [
     {{
       "titre": "Nom accrocheur du look",
-      "description": "2-3 phrases decrivant le look et pourquoi c'est un bon plan",
+      "description": "2-3 phrases decrivant le look",
       "pieces": [
-        {{"type": "Nom EXACT du produit", "marque": "H&M", "prix": 9.99, "lien_recherche": "H&M t-shirt col rond regular fit {genre.lower()}"}},
-        {{"type": "Nom exact du bas", "marque": "Levi's", "prix": 49.99, "lien_recherche": "Levi's 511 slim fit {genre.lower()}"}},
-        {{"type": "Nom exact chaussures", "marque": "Vans", "prix": 39.99, "lien_recherche": "Vans Old Skool noir blanc {genre.lower()}"}},
-        {{"type": "Nom exact accessoire", "marque": "New Era", "prix": 15.00, "lien_recherche": "New Era casquette baseball coton {genre.lower()}"}}
+        {{
+          "type": "Nom EXACT du produit tel qu'il apparait sur le site",
+          "marque": "H&M",
+          "prix": 9.99,
+          "url_produit": "https://www2.hm.com/fr_fr/productpage.XXXXXXX.html",
+          "shop": "H&M"
+        }},
+        {{
+          "type": "Nom exact du bas",
+          "marque": "Levi's",
+          "prix": 49.99,
+          "url_produit": "https://www.amazon.fr/dp/XXXXXXXXXX",
+          "shop": "Amazon"
+        }},
+        {{
+          "type": "Nom exact chaussures",
+          "marque": "Vans",
+          "prix": 39.99,
+          "url_produit": "https://www.zalando.fr/vans-old-skool-XXXXXX.html",
+          "shop": "Zalando"
+        }},
+        {{
+          "type": "Nom exact accessoire",
+          "marque": "New Era",
+          "prix": 15.00,
+          "url_produit": "https://www.asos.com/fr/new-era/XXXXXX",
+          "shop": "ASOS"
+        }}
       ],
       "occasion": "Journee decontractee, Week-end, etc."
     }},
     {{
-      "titre": "Deuxieme look different",
-      "description": "Description du bon plan",
+      "titre": "Deuxieme look (style different)",
+      "description": "Description du look",
       "pieces": [
-        {{"type": "Produit precis", "marque": "Marque", "prix": 12.99, "lien_recherche": "requete precise"}},
-        {{"type": "Produit precis", "marque": "Marque", "prix": 19.99, "lien_recherche": "requete precise"}},
-        {{"type": "Produit precis", "marque": "Marque", "prix": 29.99, "lien_recherche": "requete precise"}},
-        {{"type": "Produit precis", "marque": "Marque", "prix": 9.99, "lien_recherche": "requete precise"}}
+        {{"type": "Produit reel", "marque": "Marque", "prix": 12.99, "url_produit": "URL directe", "shop": "Nom du site"}},
+        {{"type": "Produit reel", "marque": "Marque", "prix": 19.99, "url_produit": "URL directe", "shop": "Nom du site"}},
+        {{"type": "Produit reel", "marque": "Marque", "prix": 29.99, "url_produit": "URL directe", "shop": "Nom du site"}},
+        {{"type": "Produit reel", "marque": "Marque", "prix": 9.99, "url_produit": "URL directe", "shop": "Nom du site"}}
       ],
       "occasion": "..."
     }},
     {{
-      "titre": "Troisieme look different",
-      "description": "Description du bon plan",
+      "titre": "Troisieme look (style different)",
+      "description": "Description du look",
       "pieces": [
-        {{"type": "Produit precis", "marque": "Marque", "prix": 14.99, "lien_recherche": "requete precise"}},
-        {{"type": "Produit precis", "marque": "Marque", "prix": 25.99, "lien_recherche": "requete precise"}},
-        {{"type": "Produit precis", "marque": "Marque", "prix": 34.99, "lien_recherche": "requete precise"}},
-        {{"type": "Produit precis", "marque": "Marque", "prix": 7.99, "lien_recherche": "requete precise"}}
+        {{"type": "Produit reel", "marque": "Marque", "prix": 14.99, "url_produit": "URL directe", "shop": "Nom du site"}},
+        {{"type": "Produit reel", "marque": "Marque", "prix": 25.99, "url_produit": "URL directe", "shop": "Nom du site"}},
+        {{"type": "Produit reel", "marque": "Marque", "prix": 34.99, "url_produit": "URL directe", "shop": "Nom du site"}},
+        {{"type": "Produit reel", "marque": "Marque", "prix": 7.99, "url_produit": "URL directe", "shop": "Nom du site"}}
       ],
       "occasion": "..."
     }}
@@ -89,14 +116,17 @@ Reponds UNIQUEMENT avec un objet JSON valide :
 }}
 
 REGLES STRICTES :
-- BUDGET : Le total de chaque tenue doit etre entre 50 et 150 euros MAXIMUM. Pas de piece a plus de 60 euros.
-- PROMOS : Privilegie : H&M, UNIQLO, Primark, Zara, Bershka, Pull&Bear, ASOS, Kiabi, Decathlon, C&A.
-- "prix" doit etre un NOMBRE (ex: 9.99). PAS une chaine. PAS de fourchette.
-- "type" = le nom EXACT du produit tel qu'il apparait sur le site de la marque.
-- "lien_recherche" = requete pour TROUVER ce produit exact. Format : "[marque] [nom exact] [homme/femme]".
+- PRODUITS REELS : Chaque piece DOIT etre un vrai produit trouve via Google Search. URL DIRECTE vers la page produit.
+- "url_produit" = URL COMPLETE vers la page produit specifique (ex: https://www.zalando.fr/nike-air-max-90-baskets-ni112o0bt-a11.html). JAMAIS une URL de recherche ou categorie.
+- "shop" = nom du site e-commerce (ex: "Zalando", "Amazon", "H&M", "ASOS", "Zara", "Uniqlo").
+- "prix" doit etre un NOMBRE (ex: 9.99). Le VRAI prix affiche sur le site. PAS une chaine. PAS de fourchette.
+- "type" = le nom EXACT du produit tel qu'il apparait sur le site.
+- BUDGET : Total par tenue entre 50 et 150 euros. Pas de piece a plus de 60 euros.
+- SITES PREFERES : Zalando, Amazon.fr, H&M, ASOS, Zara, Uniqlo, Bershka, Pull&Bear, Kiabi, Decathlon, C&A.
 - Les 3 suggestions doivent etre DIFFERENTES (casual, habille, sport/streetwear).
 - Adapte au genre ({genre}), age ({age} ans), morphologie ({morphologie}), meteo ({temp} degres, {weather_desc}).
 - NE PAS inclure "prix_total", il sera calcule automatiquement.
+- Si tu ne trouves pas l'URL exacte d'un produit, mets "lien_recherche" avec une requete de recherche en fallback.
 """
 
     try:
@@ -106,7 +136,8 @@ REGLES STRICTES :
             config=types.GenerateContentConfig(
                 temperature=0.7,
                 max_output_tokens=4096,
-                http_options=types.HttpOptions(timeout=30000),
+                tools=[types.Tool(google_search=types.GoogleSearch())],
+                http_options=types.HttpOptions(timeout=45000),
             ),
             user_id=user_id,
         )

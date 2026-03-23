@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, Sparkles, ShoppingBag, Share2, Check, Crown, Lock, Image } from 'lucide-react';
 import type { Suggestion, SuggestionPiece } from '@/lib/types';
-import { buildShopUrl } from '@/lib/utils';
+import { buildShopUrl, enrichProductUrl, extractShopName } from '@/lib/utils';
 import { shareLookCard } from '@/lib/shareCard';
 
 async function shareSuggestion(sug: Suggestion) {
@@ -130,12 +130,24 @@ export default function SuggestionsSection({
                                 <div className="space-y-2">
                                     {sug.pieces?.map((piece, pidx) => {
                                         const prixNum = typeof piece.prix === 'number' ? piece.prix : parseFloat(String(piece.prix)) || 0;
-                                        const searchTerms = piece.lien_recherche || `${piece.type} ${piece.marque}`;
+                                        const hasDirectUrl = piece.url_produit && piece.url_produit.startsWith('http');
+                                        const href = hasDirectUrl
+                                            ? enrichProductUrl(piece.url_produit!)
+                                            : buildShopUrl(piece.lien_recherche || `${piece.type} ${piece.marque}`);
+                                        const shopName = piece.shop
+                                            || (hasDirectUrl ? extractShopName(piece.url_produit!) : null);
                                         return (
                                             <div key={pidx} className="flex items-center justify-between bg-white/5 rounded-xl px-3 py-2.5">
                                                 <div className="flex-1 min-w-0 pr-2">
                                                     <p className="text-sm font-bold text-white truncate">{piece.type}</p>
-                                                    <p className="text-xs text-gray-400 font-medium">{piece.marque}</p>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <p className="text-xs text-gray-400 font-medium">{piece.marque}</p>
+                                                        {shopName && (
+                                                            <span className="text-[10px] text-purple-400/70 font-medium">
+                                                                sur {shopName}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <div className="flex flex-col items-end gap-1.5 shrink-0">
                                                     <span className="text-sm font-black text-transparent bg-clip-text bg-linear-to-r from-purple-400 to-pink-400">
@@ -144,14 +156,16 @@ export default function SuggestionsSection({
                                                     <motion.a
                                                         whileHover={{ scale: 1.05 }}
                                                         whileTap={{ scale: 0.95 }}
-                                                        href={buildShopUrl(searchTerms)}
+                                                        href={href}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         onClick={() => onProductClick(piece)}
                                                         className="flex items-center gap-1.5 bg-linear-to-r from-purple-600 to-blue-600 rounded-lg px-3 py-1.5 shadow-lg shadow-purple-500/25"
                                                     >
                                                         <ShoppingBag className="w-3.5 h-3.5 text-white" />
-                                                        <span className="text-[10px] font-bold text-white uppercase tracking-wider">Acheter</span>
+                                                        <span className="text-[10px] font-bold text-white uppercase tracking-wider">
+                                                            {hasDirectUrl ? 'Voir' : 'Acheter'}
+                                                        </span>
                                                     </motion.a>
                                                 </div>
                                             </div>
