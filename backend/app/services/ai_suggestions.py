@@ -1,7 +1,7 @@
 """
 AI service — daily outfit suggestions.
-Generates 3 personalized looks based on user profile + current weather.
-Uses Google Search grounding to find real products with direct URLs.
+Wardrobe-first: composes outfits from the user's own clothes,
+then suggests complementary pieces from the marketplace.
 """
 import logging
 from typing import Optional
@@ -13,12 +13,43 @@ from app.services.ai_base import client, extract_json, tracked_generate
 logger = logging.getLogger(__name__)
 
 
+def _format_wardrobe(items: list[dict]) -> str:
+    """Format wardrobe items for the AI prompt."""
+    if not items:
+        return "GARDE-ROBE VIDE — l'utilisateur n'a pas encore ajouté de vêtements."
+    lines = []
+    for it in items:
+        tags = it.get("tags_ia", "") or ""
+        lines.append(
+            f"  - ID:{it['id']} | {it['type']} | couleur:{it['couleur']} | saison:{it['saison']}"
+            + (f" | détails:{tags}" if tags else "")
+        )
+    return "\n".join(lines)
+
+
+def _format_marketplace(listings: list[dict]) -> str:
+    """Format marketplace listings for the AI prompt."""
+    if not listings:
+        return "AUCUN ARTICLE en vente sur la marketplace pour le moment."
+    lines = []
+    for ls in listings:
+        price_eur = ls["price_cents"] / 100
+        lines.append(
+            f"  - LISTING_ID:{ls['id']} | {ls['title']} | marque:{ls.get('brand', '?')} "
+            f"| {price_eur:.2f}€ | état:{ls['condition']} | type:{ls['category_type']} "
+            f"| couleur:{ls['color']} | saison:{ls['season']} | taille:{ls.get('size', '?')}"
+        )
+    return "\n".join(lines)
+
+
 async def get_daily_suggestions(
     user_profile: dict,
     weather_data: dict,
+    wardrobe_items: list[dict],
+    marketplace_listings: list[dict],
     user_id: Optional[int] = None,
 ) -> dict:
-    """Generate personalized style suggestions based on profile + weather."""
+    """Generate personalized style suggestions from wardrobe + marketplace."""
     if not client:
         logger.error("Gemini client not initialized (missing API key)")
         return {"suggestions": []}
@@ -31,9 +62,11 @@ async def get_daily_suggestions(
     weather_desc = weather_data.get("description", "Ensoleillé")
     ville = weather_data.get("ville", "Paris")
 
+    wardrobe_text = _format_wardrobe(wardrobe_items)
+    marketplace_text = _format_marketplace(marketplace_listings)
+
     prompt = f"""
-Tu es un personal shopper EXPERT. Tu trouves des VRAIS produits disponibles a l'achat sur des sites e-commerce.
-Utilise Google Search pour trouver chaque produit REEL avec son URL DIRECTE vers la page produit.
+Tu es un STYLISTE PERSONNEL expert. Tu connais la garde-robe de {prenom} et tu composes des tenues avec SES vêtements.
 
 PROFIL :
 - Prenom : {prenom}
@@ -46,87 +79,74 @@ METEO ACTUELLE :
 - Conditions : {weather_desc}
 - Ville : {ville}
 
-MISSION : 3 tenues COMPLETES avec des produits REELS trouvables en ligne. Budget 50-150 euros par tenue.
+═══ GARDE-ROBE DE {prenom.upper()} ═══
+{wardrobe_text}
 
-IMPORTANT : Pour chaque piece, cherche le produit EXACT sur un site e-commerce (amazon.fr, zalando.fr, asos.com, hm.com, zara.com, uniqlo.com, bershka.com, pullandbear.com, etc.) et donne l'URL DIRECTE vers la PAGE PRODUIT (PAS une page de recherche, PAS une page categorie).
+═══ ARTICLES EN VENTE SUR LA MARKETPLACE ═══
+{marketplace_text}
+
+MISSION : Compose 3 tenues COMPLETES et STYLEES.
+
+REGLES DE COMPOSITION :
+1. PRIORITE ABSOLUE : utilise les vetements de la garde-robe de {prenom} (source: "wardrobe").
+2. Si une piece MANQUE pour completer la tenue (ex: pas de chaussures, pas de veste), cherche dans la marketplace (source: "marketplace").
+3. Si ni la garde-robe ni la marketplace n'ont la piece, suggere un achat general (source: "suggestion") avec un type et une fourchette de prix.
+4. Chaque tenue doit etre ADAPTEE a la meteo ({temp}°C, {weather_desc}).
+5. Les 3 tenues doivent etre DIFFERENTES (casual, habille, sport/streetwear par exemple).
 
 Reponds UNIQUEMENT avec un objet JSON valide :
 
 {{
-  "greeting": "Salutation personnalisee pour {prenom} avec un conseil mode du jour lie a la meteo de {ville}",
+  "greeting": "Salutation chaleureuse pour {prenom}, mentionne la meteo de {ville} et donne un conseil mode du jour",
   "suggestions": [
     {{
-      "titre": "Nom accrocheur du look",
-      "description": "2-3 phrases decrivant le look",
+      "titre": "Nom du look",
+      "description": "2-3 phrases expliquant pourquoi cette combinaison fonctionne bien ensemble et est adaptee a la meteo",
       "pieces": [
         {{
-          "type": "Nom EXACT du produit tel qu'il apparait sur le site",
-          "marque": "H&M",
-          "prix": 9.99,
-          "url_produit": "https://www2.hm.com/fr_fr/productpage.XXXXXXX.html",
-          "shop": "H&M"
+          "type": "Description de la piece (ex: T-shirt blanc col rond)",
+          "source": "wardrobe",
+          "item_id": 42,
+          "couleur": "blanc",
+          "marque": null
         }},
         {{
-          "type": "Nom exact du bas",
+          "type": "Jean slim bleu fonce",
+          "source": "wardrobe",
+          "item_id": 15,
+          "couleur": "bleu",
+          "marque": null
+        }},
+        {{
+          "type": "Veste en jean vintage",
+          "source": "marketplace",
+          "listing_id": 7,
+          "prix": 25.00,
           "marque": "Levi's",
-          "prix": 49.99,
-          "url_produit": "https://www.amazon.fr/dp/XXXXXXXXXX",
-          "shop": "Amazon"
+          "couleur": "bleu"
         }},
         {{
-          "type": "Nom exact chaussures",
-          "marque": "Vans",
-          "prix": 39.99,
-          "url_produit": "https://www.zalando.fr/vans-old-skool-XXXXXX.html",
-          "shop": "Zalando"
-        }},
-        {{
-          "type": "Nom exact accessoire",
-          "marque": "New Era",
-          "prix": 15.00,
-          "url_produit": "https://www.asos.com/fr/new-era/XXXXXX",
-          "shop": "ASOS"
+          "type": "Sneakers blanches",
+          "source": "suggestion",
+          "prix_estime": 45.00,
+          "conseil": "Des baskets blanches minimalistes completeraient parfaitement cette tenue"
         }}
       ],
-      "occasion": "Journee decontractee, Week-end, etc."
-    }},
-    {{
-      "titre": "Deuxieme look (style different)",
-      "description": "Description du look",
-      "pieces": [
-        {{"type": "Produit reel", "marque": "Marque", "prix": 12.99, "url_produit": "URL directe", "shop": "Nom du site"}},
-        {{"type": "Produit reel", "marque": "Marque", "prix": 19.99, "url_produit": "URL directe", "shop": "Nom du site"}},
-        {{"type": "Produit reel", "marque": "Marque", "prix": 29.99, "url_produit": "URL directe", "shop": "Nom du site"}},
-        {{"type": "Produit reel", "marque": "Marque", "prix": 9.99, "url_produit": "URL directe", "shop": "Nom du site"}}
-      ],
-      "occasion": "..."
-    }},
-    {{
-      "titre": "Troisieme look (style different)",
-      "description": "Description du look",
-      "pieces": [
-        {{"type": "Produit reel", "marque": "Marque", "prix": 14.99, "url_produit": "URL directe", "shop": "Nom du site"}},
-        {{"type": "Produit reel", "marque": "Marque", "prix": 25.99, "url_produit": "URL directe", "shop": "Nom du site"}},
-        {{"type": "Produit reel", "marque": "Marque", "prix": 34.99, "url_produit": "URL directe", "shop": "Nom du site"}},
-        {{"type": "Produit reel", "marque": "Marque", "prix": 7.99, "url_produit": "URL directe", "shop": "Nom du site"}}
-      ],
-      "occasion": "..."
+      "occasion": "Journee decontractee"
     }}
   ]
 }}
 
 REGLES STRICTES :
-- PRODUITS REELS : Chaque piece DOIT etre un vrai produit trouve via Google Search. URL DIRECTE vers la page produit.
-- "url_produit" = URL COMPLETE vers la page produit specifique (ex: https://www.zalando.fr/nike-air-max-90-baskets-ni112o0bt-a11.html). JAMAIS une URL de recherche ou categorie.
-- "shop" = nom du site e-commerce (ex: "Zalando", "Amazon", "H&M", "ASOS", "Zara", "Uniqlo").
-- "prix" doit etre un NOMBRE (ex: 9.99). Le VRAI prix affiche sur le site. PAS une chaine. PAS de fourchette.
-- "type" = le nom EXACT du produit tel qu'il apparait sur le site.
-- BUDGET : Total par tenue entre 50 et 150 euros. Pas de piece a plus de 60 euros.
-- SITES PREFERES : Zalando, Amazon.fr, H&M, ASOS, Zara, Uniqlo, Bershka, Pull&Bear, Kiabi, Decathlon, C&A.
-- Les 3 suggestions doivent etre DIFFERENTES (casual, habille, sport/streetwear).
-- Adapte au genre ({genre}), age ({age} ans), morphologie ({morphologie}), meteo ({temp} degres, {weather_desc}).
+- Pour source "wardrobe" : TOUJOURS inclure "item_id" correspondant a un ID existant dans la garde-robe ci-dessus.
+- Pour source "marketplace" : TOUJOURS inclure "listing_id" correspondant a un LISTING_ID existant dans la marketplace ci-dessus.
+- Pour source "suggestion" : inclure "prix_estime" (nombre) et "conseil" (texte court).
+- "type" = description claire de la piece vestimentaire.
+- NE PAS inventer des item_id ou listing_id qui n'existent pas dans les listes ci-dessus.
+- Privilegie les pieces de la garde-robe — c'est ce que l'utilisateur POSSEDE deja.
+- Adapte les combinaisons a la meteo, au genre, a l'age et a la morphologie.
+- Assure-toi que les couleurs et styles se combinent harmonieusement.
 - NE PAS inclure "prix_total", il sera calcule automatiquement.
-- Si tu ne trouves pas l'URL exacte d'un produit, mets "lien_recherche" avec une requete de recherche en fallback.
 """
 
     try:
@@ -136,13 +156,24 @@ REGLES STRICTES :
             config=types.GenerateContentConfig(
                 temperature=0.7,
                 max_output_tokens=4096,
-                tools=[types.Tool(google_search=types.GoogleSearch())],
-                http_options=types.HttpOptions(timeout=45000),
+                http_options=types.HttpOptions(timeout=30000),
             ),
             user_id=user_id,
         )
         parsed = extract_json(response.text)
         if isinstance(parsed, dict):
+            # Validate item_id and listing_id references
+            wardrobe_ids = {it["id"] for it in wardrobe_items}
+            listing_ids = {ls["id"] for ls in marketplace_listings}
+            for sug in parsed.get("suggestions", []):
+                for piece in sug.get("pieces", []):
+                    src = piece.get("source", "")
+                    if src == "wardrobe" and piece.get("item_id") not in wardrobe_ids:
+                        piece["source"] = "suggestion"
+                        piece.pop("item_id", None)
+                    elif src == "marketplace" and piece.get("listing_id") not in listing_ids:
+                        piece["source"] = "suggestion"
+                        piece.pop("listing_id", None)
             return parsed
         return {"suggestions": [], "greeting": f"Bonjour {prenom} !"}
     except Exception as e:

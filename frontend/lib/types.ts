@@ -4,6 +4,7 @@
 export interface User {
   id: number;
   prenom: string;
+  email?: string | null;
   morphologie: string;
   genre: string;
   age: number;
@@ -37,13 +38,21 @@ export interface ClothingItem {
   category?: string;
 }
 
+export type SuggestionSource = 'wardrobe' | 'marketplace' | 'suggestion';
+
 export interface SuggestionPiece {
   type: string;
-  marque: string;
-  prix: number;
-  url_produit?: string;       // Direct product page URL (from Google Search grounding)
-  shop?: string;              // Shop name (e.g. "Zalando", "Amazon", "H&M")
-  lien_recherche?: string;    // Fallback search query if no direct URL found
+  source: SuggestionSource;
+  // wardrobe source
+  item_id?: number;
+  // marketplace source
+  listing_id?: number;
+  prix?: number;
+  marque?: string | null;
+  couleur?: string;
+  // suggestion source (general recommendation)
+  prix_estime?: number;
+  conseil?: string;
 }
 
 export interface Suggestion {

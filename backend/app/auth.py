@@ -15,15 +15,18 @@ logger = logging.getLogger(__name__)
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_DAYS = 30
+TOKEN_EXPIRE_REMEMBER = 30   # days — "Rester connecté"
+TOKEN_EXPIRE_SESSION = 1     # day  — session courte
 
 security = HTTPBearer()
 
 
-def create_access_token(user_id: int) -> str:
+def create_access_token(user_id: int, remember_me: bool = True) -> str:
+    """Create a JWT token. 30 days if remember_me, 1 day otherwise."""
     if not SECRET_KEY:
         raise RuntimeError("JWT_SECRET_KEY non définie")
-    expire = datetime.now(timezone.utc) + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
+    days = TOKEN_EXPIRE_REMEMBER if remember_me else TOKEN_EXPIRE_SESSION
+    expire = datetime.now(timezone.utc) + timedelta(days=days)
     payload = {"sub": str(user_id), "exp": expire}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 

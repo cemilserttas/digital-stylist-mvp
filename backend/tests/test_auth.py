@@ -34,8 +34,8 @@ async def test_create_returns_token(client: AsyncClient, make_user):
 # Token returned on login
 # ---------------------------------------------------------------------------
 async def test_login_returns_token(client: AsyncClient, make_user):
-    created = await make_user(client, prenom="LoginToken", password="TestPass1")
-    resp = await client.post("/users/login", json={"prenom": "LoginToken", "password": "TestPass1"})
+    created = await make_user(client, prenom="LoginToken", password="TestPass1", email="logintoken@test.com")
+    resp = await client.post("/users/login", json={"email": "logintoken@test.com", "password": "TestPass1"})
     assert resp.status_code == 200
     body = resp.json()
     assert "token" in body

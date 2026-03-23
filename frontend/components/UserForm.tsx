@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
-import { LogIn, UserPlus, Loader2, Sparkles } from 'lucide-react';
+import { LogIn, UserPlus, Loader2, Sparkles, Mail, Lock, User } from 'lucide-react';
 import { api } from '../lib/api';
 
 const MORPHOLOGIES = [
@@ -22,8 +22,10 @@ type Mode = 'login' | 'register';
 export default function UserForm({ onUserCreated }: UserFormProps) {
     const [mode, setMode] = useState<Mode>('login');
     const [step, setStep] = useState(1);
+    const [email, setEmail] = useState('');
     const [prenom, setPrenom] = useState('');
     const [password, setPassword] = useState('');
+    const [rememberMe, setRememberMe] = useState(true);
     const [referralCode, setReferralCode] = useState('');
     const [genre, setGenre] = useState('Homme');
     const [age, setAge] = useState(25);
@@ -34,19 +36,24 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!prenom.trim()) return;
+        if (!email.trim()) return;
         setLoading(true);
         setError(null);
 
         try {
             if (mode === 'login') {
-                const response = await api.post('/users/login', { prenom: prenom.trim(), password });
+                const response = await api.post('/users/login', {
+                    email: email.trim().toLowerCase(),
+                    password,
+                    remember_me: rememberMe,
+                });
                 const { token, user } = response.data;
                 if (token) localStorage.setItem('stylist_token', token);
                 playSuccessChime();
                 onUserCreated(user ?? response.data);
             } else {
                 const response = await api.post('/users/create', {
+                    email: email.trim().toLowerCase(),
                     prenom: prenom.trim(),
                     password,
                     morphologie,
@@ -62,7 +69,9 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
         } catch (err: unknown) {
             const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
             if (mode === 'login' && axiosErr.response?.status === 404) {
-                setError(`Aucun compte trouvé pour "${prenom}".`);
+                setError("Aucun compte trouvé avec cet email.");
+            } else if (axiosErr.response?.status === 409) {
+                setError("Un compte existe déjà avec cet email.");
             } else if (axiosErr.response?.data?.detail) {
                 setError(axiosErr.response.data.detail);
             } else {
@@ -74,7 +83,7 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
     };
 
     const nextStep = () => {
-        if (step === 1 && (!prenom.trim() || password.length < 4)) return;
+        if (step === 1 && (!email.trim() || !prenom.trim() || password.length < 6)) return;
         playPop();
         setStep(s => Math.min(s + 1, 3));
     };
@@ -84,7 +93,6 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
             {/* Decorative orbs */}
             <div className="fixed top-0 left-1/3 w-80 h-80 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
             <div className="fixed bottom-0 right-1/3 w-72 h-72 bg-pink-600/10 rounded-full blur-3xl pointer-events-none" />
-            {/* Background grid */}
             <div className="fixed inset-0 opacity-[0.03]" style={{
                 backgroundImage: 'radial-gradient(circle at 25% 25%, white 1px, transparent 1px)',
                 backgroundSize: '50px 50px',
@@ -102,7 +110,6 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                     <p className="text-white font-bold text-lg mb-1">Ton look parfait en 30 secondes.</p>
                     <p className="text-gray-400 text-sm">Chaque matin, ton IA regarde la météo et te dit quoi porter.</p>
 
-                    {/* Bénéfices clés — visible seulement en inscription */}
                     {mode === 'register' && (
                         <div className="grid grid-cols-3 gap-3 mt-5 text-center">
                             {[
@@ -148,30 +155,47 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
 
                     {/* Login mode */}
                     {mode === 'login' && (
-                        <form onSubmit={handleSubmit} className="space-y-6">
+                        <form onSubmit={handleSubmit} className="space-y-5">
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-2">Prénom</label>
-                                <input
-                                    type="text"
-                                    required
-                                    className="w-full px-4 py-3.5 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
-                                    value={prenom}
-                                    onChange={(e) => setPrenom(e.target.value)}
-                                    placeholder="Entrez votre prénom"
-                                    autoFocus
-                                />
+                                <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                    <input
+                                        type="email"
+                                        required
+                                        className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        placeholder="votre@email.com"
+                                        autoFocus
+                                        autoComplete="email"
+                                    />
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-2">Mot de passe</label>
-                                <input
-                                    type="password"
-                                    required
-                                    className="w-full px-4 py-3.5 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="Votre mot de passe"
-                                />
+                                <div className="relative">
+                                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                    <input
+                                        type="password"
+                                        required
+                                        className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        placeholder="Votre mot de passe"
+                                        autoComplete="current-password"
+                                    />
+                                </div>
                             </div>
+
+                            {/* Remember me */}
+                            <label className="flex items-center gap-3 cursor-pointer group">
+                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${rememberMe ? 'bg-purple-600 border-purple-600' : 'border-white/20 group-hover:border-white/40'}`}>
+                                    {rememberMe && <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                </div>
+                                <input type="checkbox" className="sr-only" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
+                                <span className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors">Rester connecté</span>
+                            </label>
 
                             {error && (
                                 <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 p-3 rounded-xl">
@@ -181,14 +205,14 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                                         onClick={() => { setMode('register'); setError(null); }}
                                         className="block mt-2 text-purple-400 font-bold underline text-xs"
                                     >
-                                        → Créer un compte
+                                        Créer un compte
                                     </button>
                                 </div>
                             )}
 
                             <button
                                 type="submit"
-                                disabled={loading || !prenom.trim()}
+                                disabled={loading || !email.trim()}
                                 className="w-full bg-white text-gray-900 py-3.5 rounded-xl font-bold hover:bg-gray-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
                             >
                                 {loading ? (
@@ -207,49 +231,59 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                             {/* Progress */}
                             <div className="flex gap-2 mb-2">
                                 {[1, 2, 3].map((s) => (
-                                    <div key={s} className={`flex-1 h-1 rounded-full transition-all ${s <= step ? 'bg-purple-500' : 'bg-white/10'
-                                        }`} />
+                                    <div key={s} className={`flex-1 h-1 rounded-full transition-all ${s <= step ? 'bg-purple-500' : 'bg-white/10'}`} />
                                 ))}
                             </div>
 
-                            {/* Step 1: Name + Password + Gender */}
+                            {/* Step 1: Email + Name + Password + Gender */}
                             {step === 1 && (
-                                <div className="space-y-5" style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                                <div className="space-y-4" style={{ animation: 'fadeIn 0.3s ease-out' }}>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                                        <div className="relative">
+                                            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                            <input
+                                                type="email"
+                                                required
+                                                className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
+                                                placeholder="votre@email.com"
+                                                autoFocus
+                                                autoComplete="email"
+                                            />
+                                        </div>
+                                    </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">Prénom</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            className="w-full px-4 py-3.5 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
-                                            value={prenom}
-                                            onChange={(e) => setPrenom(e.target.value)}
-                                            placeholder="Votre prénom"
-                                            autoFocus
-                                        />
+                                        <div className="relative">
+                                            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                            <input
+                                                type="text"
+                                                required
+                                                className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                                                value={prenom}
+                                                onChange={(e) => setPrenom(e.target.value)}
+                                                placeholder="Votre prénom"
+                                                autoComplete="given-name"
+                                            />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Mot de passe <span className="text-gray-500 font-normal">(min. 4 caractères)</span></label>
-                                        <input
-                                            type="password"
-                                            required
-                                            minLength={4}
-                                            className="w-full px-4 py-3.5 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                            placeholder="Choisissez un mot de passe"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Code de parrainage <span className="text-gray-500 font-normal">(optionnel)</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            className="w-full px-4 py-3.5 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all uppercase"
-                                            value={referralCode}
-                                            onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                                            placeholder="REF_PRENOM_XXXX"
-                                        />
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Mot de passe <span className="text-gray-500 font-normal">(min. 6 caractères)</span></label>
+                                        <div className="relative">
+                                            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                            <input
+                                                type="password"
+                                                required
+                                                minLength={6}
+                                                className="w-full pl-11 pr-4 py-3.5 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all"
+                                                value={password}
+                                                onChange={(e) => setPassword(e.target.value)}
+                                                placeholder="Choisissez un mot de passe"
+                                                autoComplete="new-password"
+                                            />
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">Genre</label>
@@ -269,13 +303,30 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                                             ))}
                                         </div>
                                     </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                                            Code de parrainage <span className="text-gray-500 font-normal">(optionnel)</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            className="w-full px-4 py-3.5 bg-white/10 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all uppercase"
+                                            value={referralCode}
+                                            onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                                            placeholder="REF_PRENOM_XXXX"
+                                        />
+                                    </div>
+
+                                    {error && (
+                                        <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 p-3 rounded-xl">{error}</div>
+                                    )}
+
                                     <button
                                         type="button"
                                         onClick={nextStep}
-                                        disabled={!prenom.trim() || password.length < 4}
+                                        disabled={!email.trim() || !prenom.trim() || password.length < 6}
                                         className="w-full bg-purple-600 text-white py-3.5 rounded-xl font-bold hover:bg-purple-700 transition-all disabled:opacity-50 active:scale-[0.98]"
                                     >
-                                        Suivant →
+                                        Suivant
                                     </button>
                                 </div>
                             )}
@@ -306,14 +357,14 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                                             onClick={() => setStep(1)}
                                             className="flex-1 bg-white/5 text-gray-300 py-3.5 rounded-xl font-bold hover:bg-white/10 transition-all border border-white/10"
                                         >
-                                            ← Retour
+                                            Retour
                                         </button>
                                         <button
                                             type="button"
                                             onClick={nextStep}
                                             className="flex-1 bg-purple-600 text-white py-3.5 rounded-xl font-bold hover:bg-purple-700 transition-all active:scale-[0.98]"
                                         >
-                                            Suivant →
+                                            Suivant
                                         </button>
                                     </div>
                                 </div>
@@ -361,7 +412,7 @@ export default function UserForm({ onUserCreated }: UserFormProps) {
                                             onClick={() => setStep(2)}
                                             className="flex-1 bg-white/5 text-gray-300 py-3.5 rounded-xl font-bold hover:bg-white/10 transition-all border border-white/10"
                                         >
-                                            ← Retour
+                                            Retour
                                         </button>
                                         <button
                                             type="submit"

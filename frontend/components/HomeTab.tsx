@@ -130,11 +130,12 @@ export interface HomeTabProps {
   onRefresh: () => void;
   onProductClick: (piece: SuggestionPiece) => void;
   onGoToWardrobe?: () => void;
+  onGoToShop?: () => void;
 }
 
 export default function HomeTab({
   user, weather, greeting, dateStr, suggestions, loadingSuggestions, suggestionLimitReached,
-  wardrobeCount = 0, onRefresh, onProductClick, onGoToWardrobe,
+  wardrobeCount = 0, onRefresh, onProductClick, onGoToWardrobe, onGoToShop,
 }: HomeTabProps) {
   const showAhaTeaser = wardrobeCount === 0 && suggestions.length === 0 && !loadingSuggestions;
 
@@ -203,6 +204,7 @@ export default function HomeTab({
           limitReached={suggestionLimitReached}
           onRefresh={onRefresh}
           onProductClick={onProductClick}
+          onGoToShop={onGoToShop}
         />
       </ErrorBoundary>
     </div>

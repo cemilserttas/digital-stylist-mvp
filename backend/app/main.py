@@ -31,11 +31,12 @@ from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import init_db, get_session
-from app.models import User
+from app.models import User, ClothingItem, MarketplaceListing
 from app.routers import wardrobe, users, admin, outfit_calendar, push, billing, shop, orders, addresses
 from app.routers.users import update_streak
 from app.services.weather_cron import start_scheduler, stop_scheduler
-from app.services.ai_service import get_daily_suggestions, chat_with_stylist
+from app.services.ai_suggestions import get_daily_suggestions
+from app.services.ai_service import chat_with_stylist
 from app.services.ai_base import drain_pending_requests
 from app.models import AIRequest
 from app.auth import get_current_user
@@ -178,7 +179,43 @@ async def daily_suggestions(
         "age": current_user.age,
         "morphologie": current_user.morphologie,
     }
-    result = await get_daily_suggestions(profile, weather_data.model_dump(), user_id=user_id)
+
+    # Fetch user's wardrobe items
+    from sqlmodel import select
+    wardrobe_result = await session.execute(
+        select(ClothingItem).where(
+            ClothingItem.user_id == user_id,
+            ClothingItem.category == "wardrobe",
+        )
+    )
+    wardrobe_items = [
+        {"id": it.id, "type": it.type, "couleur": it.couleur, "saison": it.saison, "tags_ia": it.tags_ia}
+        for it in wardrobe_result.scalars().all()
+    ]
+
+    # Fetch active marketplace listings (exclude user's own)
+    marketplace_result = await session.execute(
+        select(MarketplaceListing).where(
+            MarketplaceListing.status == "active",
+            MarketplaceListing.seller_id != user_id,
+        ).limit(50)
+    )
+    marketplace_listings = [
+        {
+            "id": ls.id, "title": ls.title, "brand": ls.brand,
+            "price_cents": ls.price_cents, "condition": ls.condition,
+            "category_type": ls.category_type, "color": ls.color,
+            "season": ls.season, "size": ls.size,
+        }
+        for ls in marketplace_result.scalars().all()
+    ]
+
+    result = await get_daily_suggestions(
+        profile, weather_data.model_dump(),
+        wardrobe_items=wardrobe_items,
+        marketplace_listings=marketplace_listings,
+        user_id=user_id,
+    )
 
     # Increment counter + streak after successful generation
     current_user.suggestions_count_today = (

@@ -1,8 +1,8 @@
 """
 Tests for /users endpoints:
-- create (returns user + token), login (returns user + token)
+- create (returns user + token), login by email (returns user + token)
 - update (requires JWT), delete (requires JWT)
-- edge cases: user inexistant, empty prénom, unauthorized access
+- edge cases: user inexistant, empty email, unauthorized access
 """
 import logging
 
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 # Create
 # ---------------------------------------------------------------------------
 async def test_create_user(client: AsyncClient, make_user):
-    data = await make_user(client, prenom="Alice", morphologie="SABLIER", genre="Femme", age=30)
+    data = await make_user(client, prenom="Alice", morphologie="SABLIER", genre="Femme", age=30, email="alice@test.com")
     user = data["user"]
     assert user["prenom"] == "Alice"
     assert user["morphologie"] == "SABLIER"
@@ -28,11 +28,11 @@ async def test_create_user(client: AsyncClient, make_user):
 
 
 # ---------------------------------------------------------------------------
-# Login (by prénom)
+# Login (by email)
 # ---------------------------------------------------------------------------
 async def test_login_existing_user(client: AsyncClient, make_user):
-    created = await make_user(client, prenom="Bob", password="MyPass1")
-    resp = await client.post("/users/login", json={"prenom": "Bob", "password": "MyPass1"})
+    created = await make_user(client, prenom="Bob", password="MyPass1", email="bob@test.com")
+    resp = await client.post("/users/login", json={"email": "bob@test.com", "password": "MyPass1"})
     assert resp.status_code == 200
     body = resp.json()
     assert body["user"]["id"] == created["user"]["id"]
@@ -40,25 +40,25 @@ async def test_login_existing_user(client: AsyncClient, make_user):
 
 
 async def test_login_wrong_password(client: AsyncClient, make_user):
-    await make_user(client, prenom="WrongPwd", password="CorrectPass")
-    resp = await client.post("/users/login", json={"prenom": "WrongPwd", "password": "WrongPass"})
+    await make_user(client, prenom="WrongPwd", password="CorrectPass", email="wrongpwd@test.com")
+    resp = await client.post("/users/login", json={"email": "wrongpwd@test.com", "password": "WrongPass"})
     assert resp.status_code == 401
 
 
 async def test_login_case_insensitive(client: AsyncClient, make_user):
-    await make_user(client, prenom="Charlie", password="TestPass1")
-    resp = await client.post("/users/login", json={"prenom": "charlie", "password": "TestPass1"})
+    await make_user(client, prenom="Charlie", password="TestPass1", email="Charlie@Test.com")
+    resp = await client.post("/users/login", json={"email": "charlie@test.com", "password": "TestPass1"})
     assert resp.status_code == 200
     assert resp.json()["user"]["prenom"] == "Charlie"
 
 
 async def test_login_unknown_user(client: AsyncClient):
-    resp = await client.post("/users/login", json={"prenom": "Inconnu", "password": "any"})
+    resp = await client.post("/users/login", json={"email": "unknown@test.com", "password": "any123"})
     assert resp.status_code == 404
 
 
-async def test_login_empty_prenom(client: AsyncClient):
-    resp = await client.post("/users/login", json={"prenom": "", "password": "any"})
+async def test_login_empty_email(client: AsyncClient):
+    resp = await client.post("/users/login", json={"email": "", "password": "any123"})
     assert resp.status_code == 400
 
 
@@ -82,7 +82,7 @@ async def test_update_user(client: AsyncClient, make_user, auth_headers):
 
 
 async def test_update_user_no_auth(client: AsyncClient, make_user):
-    """Update without JWT → 403 (missing Bearer header)."""
+    """Update without JWT → 401."""
     created = await make_user(client, prenom="NoAuth")
     user_id = created["user"]["id"]
     resp = await client.put(f"/users/{user_id}", json={"prenom": "Hacker"})
@@ -105,7 +105,7 @@ async def test_update_other_user(client: AsyncClient, make_user, auth_headers):
 # Delete (requires JWT)
 # ---------------------------------------------------------------------------
 async def test_delete_user(client: AsyncClient, make_user, auth_headers):
-    created = await make_user(client, prenom="Eve")
+    created = await make_user(client, prenom="Eve", email="eve@test.com")
     user_id = created["user"]["id"]
     token = created["token"]
 
@@ -113,12 +113,12 @@ async def test_delete_user(client: AsyncClient, make_user, auth_headers):
     assert resp.status_code == 200
 
     # Verify user is gone
-    resp2 = await client.post("/users/login", json={"prenom": "Eve", "password": "TestPass1"})
+    resp2 = await client.post("/users/login", json={"email": "eve@test.com", "password": "TestPass1"})
     assert resp2.status_code == 404
 
 
 async def test_delete_user_no_auth(client: AsyncClient, make_user):
-    """Delete without JWT → 403."""
+    """Delete without JWT → 401."""
     created = await make_user(client, prenom="NoAuthDel")
     user_id = created["user"]["id"]
     resp = await client.delete(f"/users/{user_id}")
@@ -144,6 +144,7 @@ async def test_referral_signup(client: AsyncClient, make_user, auth_headers):
 
     # New user signs up using the referral code
     resp = await client.post("/users/create", json={
+        "email": "referee@test.com",
         "prenom": "Referee",
         "morphologie": "RECTANGLE",
         "genre": "Homme",
@@ -167,6 +168,7 @@ async def test_referral_signup(client: AsyncClient, make_user, auth_headers):
 async def test_referral_invalid_code(client: AsyncClient):
     """Using a non-existent referral code → 400."""
     resp = await client.post("/users/create", json={
+        "email": "badref@test.com",
         "prenom": "BadRef",
         "morphologie": "RECTANGLE",
         "genre": "Homme",
@@ -179,11 +181,12 @@ async def test_referral_invalid_code(client: AsyncClient):
 
 async def test_referral_premium_reward(client: AsyncClient, make_user):
     """After 3 referrals, referrer gets 1 month premium."""
-    referrer = await make_user(client, prenom="BigRef")
+    referrer = await make_user(client, prenom="BigRef", email="bigref@test.com")
     ref_code = referrer["user"]["referral_code"]
 
     for i in range(3):
         resp = await client.post("/users/create", json={
+            "email": f"friend{i}@test.com",
             "prenom": f"Friend{i}",
             "morphologie": "RECTANGLE",
             "genre": "Homme",
@@ -194,7 +197,7 @@ async def test_referral_premium_reward(client: AsyncClient, make_user):
         assert resp.status_code == 200
 
     # Referrer should now be premium
-    login_resp = await client.post("/users/login", json={"prenom": "BigRef", "password": "TestPass1"})
+    login_resp = await client.post("/users/login", json={"email": "bigref@test.com", "password": "TestPass1"})
     assert login_resp.json()["user"]["is_premium"] is True
     assert login_resp.json()["user"]["premium_until"] is not None
 

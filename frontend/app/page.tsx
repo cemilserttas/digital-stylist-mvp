@@ -19,7 +19,6 @@ import UpgradeModal from '@/components/UpgradeModal';
 import StreakBadge from '@/components/StreakBadge';
 import { getWardrobe, getDailySuggestions, saveClick, updateUser, getUser } from '@/lib/api';
 import type { User, ClothingItem, Suggestion, SuggestionPiece, TabType } from '@/lib/types';
-import { buildShopUrl, enrichProductUrl } from '@/lib/utils';
 import { identifyUser, track, resetAnalytics } from '@/lib/analytics';
 
 export default function Home() {
@@ -178,19 +177,20 @@ export default function Home() {
   const handleProductClick = (piece: SuggestionPiece) => {
     if (!user) return;
     playSuccessChime();
-    const hasDirectUrl = piece.url_produit && piece.url_produit.startsWith('http');
-    const url = hasDirectUrl
-      ? enrichProductUrl(piece.url_produit!)
-      : buildShopUrl(piece.lien_recherche || `${piece.type} ${piece.marque}`);
-    track('product_link_clicked', {
-      marque: piece.marque, type: piece.type, prix: piece.prix,
-      shop: piece.shop || null, direct_link: !!hasDirectUrl,
-    });
-    saveClick(user.id, {
-      product_name: piece.type, marque: piece.marque,
-      prix: typeof piece.prix === 'number' ? piece.prix : parseFloat(String(piece.prix)) || 0,
-      url,
-    }).catch(console.error);
+
+    if (piece.source === 'marketplace' && piece.listing_id) {
+      // Navigate to shop tab — the listing detail is handled there
+      track('marketplace_piece_clicked', {
+        listing_id: piece.listing_id, type: piece.type, marque: piece.marque,
+        prix: piece.prix ?? piece.prix_estime ?? 0,
+      });
+      saveClick(user.id, {
+        product_name: piece.type, marque: piece.marque || '',
+        prix: piece.prix ?? piece.prix_estime ?? 0,
+        url: `/shop/listing/${piece.listing_id}`,
+      }).catch(console.error);
+      setActiveTab('shop');
+    }
   };
 
   const handleTabChange = (tab: TabType) => { playPop(); setActiveTab(tab); track('tab_changed', { tab }); };
@@ -290,6 +290,7 @@ export default function Home() {
                 wardrobeCount={wardrobeItems.length}
                 onRefresh={fetchSuggestions} onProductClick={handleProductClick}
                 onGoToWardrobe={() => handleTabChange('wardrobe')}
+                onGoToShop={() => handleTabChange('shop')}
               />
             )}
 

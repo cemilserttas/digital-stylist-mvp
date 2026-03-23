@@ -1,4 +1,5 @@
 import logging
+import re
 import secrets
 import string
 from datetime import timedelta, timezone, datetime, date
@@ -20,6 +21,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/users", tags=["users"])
 
 REFERRAL_PREMIUM_THRESHOLD = 3  # referrals needed to earn 1 free month of premium
+
+_EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 
 
 def update_streak(user: User) -> bool:
@@ -55,8 +58,9 @@ def _generate_referral_code(prenom: str) -> str:
 
 
 class LoginRequest(BaseModel):
-    prenom: str
+    email: str
     password: str
+    remember_me: bool = True
 
 
 class UpdateUserRequest(BaseModel):
@@ -65,6 +69,7 @@ class UpdateUserRequest(BaseModel):
     genre: Optional[str] = None
     age: Optional[int] = None
     style_prefere: Optional[str] = None
+    email: Optional[str] = None
 
 
 @router.post("/create")
@@ -72,8 +77,18 @@ async def create_user(
     user_create: UserCreate,
     session: AsyncSession = Depends(get_session)
 ):
-    if len(user_create.password) < 4:
-        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 4 caractères")
+    # Validate email format
+    email = user_create.email.strip().lower()
+    if not _EMAIL_RE.match(email):
+        raise HTTPException(status_code=400, detail="Adresse email invalide")
+
+    # Check email uniqueness
+    existing = await session.execute(select(User).where(User.email == email))
+    if existing.scalars().first():
+        raise HTTPException(status_code=409, detail="Un compte existe déjà avec cet email")
+
+    if len(user_create.password) < 6:
+        raise HTTPException(status_code=400, detail="Le mot de passe doit contenir au moins 6 caractères")
 
     # Resolve referrer if a referral code was provided
     referrer: Optional[User] = None
@@ -85,20 +100,21 @@ async def create_user(
         if not referrer:
             raise HTTPException(status_code=400, detail="Code de parrainage invalide")
 
-    user_data = user_create.model_dump(exclude={"password", "referral_code"})
+    user_data = user_create.model_dump(exclude={"password", "referral_code", "email"})
     pw = _bcrypt.hashpw(user_create.password.encode(), _bcrypt.gensalt()).decode()
 
     # Generate unique referral code for the new user
     for _ in range(5):
         candidate = _generate_referral_code(user_create.prenom)
-        existing = await session.execute(select(User).where(User.referral_code == candidate))
-        if not existing.scalars().first():
+        existing_ref = await session.execute(select(User).where(User.referral_code == candidate))
+        if not existing_ref.scalars().first():
             break
     else:
         candidate = None  # extremely unlikely collision fallback
 
     user = User(
         **user_data,
+        email=email,
         password_hash=pw,
         referral_code=candidate,
         referred_by_id=referrer.id if referrer else None,
@@ -123,13 +139,13 @@ async def create_user(
         session.add(referrer)
         await session.commit()
 
-    token = create_access_token(user.id)
-    logger.info("User created: id=%d prenom=%s referred_by=%s", user.id, user.prenom, referrer.id if referrer else None)
+    token = create_access_token(user.id, remember_me=True)
+    logger.info("User created: id=%d email=%s referred_by=%s", user.id, email, referrer.id if referrer else None)
 
-    # Fire-and-forget welcome email (no await — don't block the response)
-    if user.email:
+    # Fire-and-forget welcome email
+    if email:
         import asyncio
-        asyncio.create_task(send_welcome_email(to=user.email, prenom=user.prenom))
+        asyncio.create_task(send_welcome_email(to=email, prenom=user.prenom))
 
     return {"user": UserRead.model_validate(user).model_dump(), "token": token}
 
@@ -139,26 +155,25 @@ async def login_user(
     data: LoginRequest,
     session: AsyncSession = Depends(get_session)
 ):
-    prenom = data.prenom.strip()
-    if not prenom:
-        raise HTTPException(status_code=400, detail="Le prénom est requis")
+    email = data.email.strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="L'email est requis")
 
     result = await session.execute(
-        select(User).where(User.prenom.ilike(prenom))
+        select(User).where(User.email == email)
     )
     user = result.scalars().first()
 
     if not user:
-        raise HTTPException(status_code=404, detail=f"Aucun compte trouvé pour '{prenom}'")
+        raise HTTPException(status_code=404, detail="Aucun compte trouvé avec cet email")
 
-    # Existing users without password_hash: allow login by name (backward compat)
     if user.password_hash is None:
-        logger.warning("User %d logged in without password (legacy account)", user.id)
+        raise HTTPException(status_code=401, detail="Ce compte nécessite une réinitialisation du mot de passe")
     elif not _bcrypt.checkpw(data.password.encode(), user.password_hash.encode()):
         raise HTTPException(status_code=401, detail="Mot de passe incorrect")
 
-    token = create_access_token(user.id)
-    logger.info("User logged in: id=%d prenom=%s", user.id, user.prenom)
+    token = create_access_token(user.id, remember_me=data.remember_me)
+    logger.info("User logged in: id=%d email=%s remember=%s", user.id, email, data.remember_me)
     return {"user": UserRead.model_validate(user).model_dump(), "token": token}
 
 
@@ -216,7 +231,21 @@ async def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
 
-    for field, value in data.model_dump(exclude_none=True).items():
+    update_data = data.model_dump(exclude_none=True)
+
+    # If updating email, validate and check uniqueness
+    if "email" in update_data:
+        new_email = update_data["email"].strip().lower()
+        if not _EMAIL_RE.match(new_email):
+            raise HTTPException(status_code=400, detail="Adresse email invalide")
+        existing = await session.execute(
+            select(User).where(User.email == new_email, User.id != user_id)
+        )
+        if existing.scalars().first():
+            raise HTTPException(status_code=409, detail="Cet email est déjà utilisé")
+        update_data["email"] = new_email
+
+    for field, value in update_data.items():
         setattr(user, field, value)
 
     session.add(user)

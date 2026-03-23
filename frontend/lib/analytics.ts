@@ -12,6 +12,7 @@ type EventName =
   | 'suggestion_viewed'
   | 'suggestion_refreshed'
   | 'product_link_clicked'
+  | 'marketplace_piece_clicked'
   | 'chat_message_sent'
   | 'chat_limit_reached'
   | 'paywall_seen'

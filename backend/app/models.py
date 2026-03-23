@@ -60,12 +60,13 @@ class User(UserBase, table=True):
     outfit_plans: List["OutfitPlan"] = Relationship(back_populates="user")
 
 class UserCreate(UserBase):
+    email: str                           # required — used as login identifier
     password: str
     referral_code: Optional[str] = None  # code of the person who referred this user
-    email: Optional[str] = None          # optional — used for transactional emails
 
 class UserRead(UserBase):
     id: int
+    email: Optional[str] = None
     is_premium: bool = False
     premium_until: Optional[datetime] = None
     referral_code: Optional[str] = None

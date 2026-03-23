@@ -137,7 +137,7 @@ export async function generateLookCard(sug: Suggestion): Promise<Blob | null> {
   // ── Pieces
   const pieces = (sug.pieces || []).slice(0, 4);
   for (const piece of pieces) {
-    const prix = typeof piece.prix === 'number' ? piece.prix : parseFloat(String(piece.prix)) || 0;
+    const prix = piece.prix ?? piece.prix_estime ?? 0;
 
     // Row background
     drawRoundRect(ctx, PAD, y, W - PAD * 2, 110, 20, 'rgba(255,255,255,0.04)');
@@ -173,8 +173,7 @@ export async function generateLookCard(sug: Suggestion): Promise<Blob | null> {
 
   // ── Total row
   const total = (sug.pieces || []).reduce((sum, p) => {
-    const n = typeof p.prix === 'number' ? p.prix : parseFloat(String(p.prix)) || 0;
-    return sum + n;
+    return sum + (p.prix ?? p.prix_estime ?? 0);
   }, 0);
 
   drawRoundRect(ctx, PAD, y, W - PAD * 2, 100, 20, 'rgba(147,51,234,0.15)');

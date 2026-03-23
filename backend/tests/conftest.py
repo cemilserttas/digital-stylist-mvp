@@ -79,6 +79,8 @@ def make_user():
        Returns dict with keys: user (dict) and token (str).
     """
 
+    _counter = 0
+
     async def _create(
         ac: AsyncClient,
         prenom: str = "TestUser",
@@ -86,10 +88,16 @@ def make_user():
         genre: str = "Homme",
         age: int = 25,
         password: str = "TestPass1",
+        email: str | None = None,
     ) -> dict:
+        nonlocal _counter
+        _counter += 1
+        if email is None:
+            email = f"test{_counter}@example.com"
         resp = await ac.post(
             "/users/create",
             json={
+                "email": email,
                 "prenom": prenom,
                 "morphologie": morphologie,
                 "genre": genre,

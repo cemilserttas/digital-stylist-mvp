@@ -14,11 +14,25 @@ from app.services import storage_service
 from app.services.ai_base import drain_pending_requests
 from app.auth import get_current_user
 
-try:
-    from rembg import remove as _rembg_remove
-    _REMBG_AVAILABLE = True
-except ImportError:
-    _REMBG_AVAILABLE = False
+# rembg is loaded lazily at first upload to avoid ~200MB RAM at startup
+_REMBG_AVAILABLE: bool | None = None  # None = not yet checked
+_rembg_remove = None
+
+
+def _load_rembg():
+    """Lazy-load rembg on first upload. Returns True if available."""
+    global _REMBG_AVAILABLE, _rembg_remove
+    if _REMBG_AVAILABLE is not None:
+        return _REMBG_AVAILABLE
+    try:
+        from rembg import remove
+        _rembg_remove = remove
+        _REMBG_AVAILABLE = True
+        logger.info("rembg loaded successfully (lazy)")
+    except ImportError:
+        _REMBG_AVAILABLE = False
+        logger.info("rembg not installed — background removal disabled")
+    return _REMBG_AVAILABLE
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +87,7 @@ async def upload_clothing_item(
     # Background removal — output is always PNG with transparent background
     save_content = content
     save_ext = MIME_TO_EXT[file.content_type]
-    if _REMBG_AVAILABLE:
+    if _load_rembg():
         try:
             import asyncio
             loop = asyncio.get_event_loop()

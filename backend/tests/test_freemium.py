@@ -54,7 +54,7 @@ async def test_suggestions_free_first_call_allowed(
     token = data["token"]
 
     with patch(
-        "app.services.ai_service.get_daily_suggestions",
+        "app.services.ai_suggestions.get_daily_suggestions",
         new=AsyncMock(return_value=FAKE_SUGGESTION),
     ):
         resp = await client.post(
@@ -108,7 +108,7 @@ async def test_suggestions_premium_ignores_limit(
     await session.commit()
 
     with patch(
-        "app.services.ai_service.get_daily_suggestions",
+        "app.services.ai_suggestions.get_daily_suggestions",
         new=AsyncMock(return_value=FAKE_SUGGESTION),
     ):
         resp = await client.post(
@@ -137,7 +137,7 @@ async def test_suggestions_counter_resets_next_day(
     await session.commit()
 
     with patch(
-        "app.services.ai_service.get_daily_suggestions",
+        "app.services.ai_suggestions.get_daily_suggestions",
         new=AsyncMock(return_value=FAKE_SUGGESTION),
     ):
         resp = await client.post(
@@ -158,7 +158,7 @@ async def test_suggestions_counter_increments(
     token = data["token"]
 
     with patch(
-        "app.services.ai_service.get_daily_suggestions",
+        "app.services.ai_suggestions.get_daily_suggestions",
         new=AsyncMock(return_value=FAKE_SUGGESTION),
     ):
         resp = await client.post(

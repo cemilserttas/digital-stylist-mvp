@@ -32,7 +32,10 @@ api.interceptors.response.use(
     }
 );
 
-export const createUser = async (data: { prenom: string; morphologie: string; genre: string; age: number; password?: string; referral_code?: string }) => {
+export const createUser = async (data: {
+    email: string; prenom: string; morphologie: string; genre: string;
+    age: number; password: string; referral_code?: string;
+}) => {
     const response = await api.post('/users/create', data);
     return response.data;
 };
@@ -42,8 +45,8 @@ export const getReferralInfo = async (userId: number) => {
     return response.data;
 };
 
-export const loginUser = async (prenom: string, password: string) => {
-    const response = await api.post('/users/login', { prenom, password });
+export const loginUser = async (email: string, password: string, remember_me: boolean = true) => {
+    const response = await api.post('/users/login', { email, password, remember_me });
     return response.data;
 };
 
